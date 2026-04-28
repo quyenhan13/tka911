@@ -130,6 +130,25 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
   return (
     <div className="fixed inset-0 bg-background z-[1000] flex flex-col overflow-hidden">
+      {/* Header Bar */}
+      <div 
+        className="shrink-0 px-4 py-3 flex items-center gap-3 border-b border-white/5 bg-background/50 backdrop-blur-xl"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
+      >
+        <button 
+          onClick={onBack}
+          className="p-2 rounded-xl bg-white/5 text-white active:scale-90 transition-all"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-bold text-white truncate">{details.title}</h2>
+          <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Đang xem • Tập {currentEp?.episode}</p>
+        </div>
+      </div>
+
       {/* Video Player Area */}
       <div className="relative z-50 w-full shrink-0 aspect-video max-h-[42vh] bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
         {currentEp && currentEmbedUrl ? (
@@ -142,15 +161,6 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
               allow="autoplay; encrypted-media"
               title="Player"
             />
-            {/* Back Button Overlay */}
-            <button 
-              onClick={onBack}
-              className="absolute top-4 left-4 p-2 rounded-full bg-black/40 backdrop-blur-md text-white active:scale-90 transition-all"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
-            </button>
           </>
         ) : (
           <div className="flex flex-col items-center gap-2">
