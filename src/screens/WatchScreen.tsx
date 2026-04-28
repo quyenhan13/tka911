@@ -7,6 +7,8 @@ interface Episode {
   episode: string;
   embed_url: string;
   embed_url_2: string | null;
+  embed_host: string;
+  embed_host_2: string | null;
 }
 
 interface MovieDetails {
@@ -28,6 +30,16 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
   const [error, setError] = useState<string | null>(null);
   const [fav, setFav] = useState(false);
   const [activeServer, setActiveServer] = useState(1);
+
+  const shouldPreferServer2 = (ep: Episode) => {
+    const host = (ep.embed_host || '').toLowerCase();
+    return Boolean(ep.embed_url_2 && (host === 'clbphimxua.com' || host.endsWith('.clbphimxua.com') || host === 'short.icu'));
+  };
+
+  const selectEpisode = (ep: Episode) => {
+    setCurrentEp(ep);
+    setActiveServer(shouldPreferServer2(ep) ? 2 : 1);
+  };
 
   useEffect(() => {
     setFav(isFavorite(slug));
@@ -53,7 +65,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
         setDetails(result.data);
         if (result.data.episodes.length > 0) {
           const firstEp = result.data.episodes[0];
-          setCurrentEp(firstEp);
+          selectEpisode(firstEp);
           
           // Lưu vào lịch sử
           saveToHistory({
@@ -171,7 +183,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
             {details.episodes.map((ep) => (
               <button
                 key={ep.episode}
-                onClick={() => setCurrentEp(ep)}
+                onClick={() => selectEpisode(ep)}
                 className={`h-10 rounded-lg font-bold text-sm transition-all active:scale-90 ${
                   currentEp?.episode === ep.episode 
                     ? 'bg-primary text-white shadow-lg shadow-primary/20' 
