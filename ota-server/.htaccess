@@ -1,0 +1,22 @@
+# Cho phép App truy cập để tải bản cập nhật (CORS)
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+</IfModule>
+
+# Ngăn trình duyệt lưu cache tệp version.json (luôn lấy bản mới nhất)
+<FilesMatch "version\.json$">
+    <IfModule mod_expires.c>
+        ExpiresActive On
+        ExpiresDefault "access plus 0 seconds"
+    </IfModule>
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </IfModule>
+</FilesMatch>
+
+# Cho phép tải file .zip
+AddType application/zip .zip
