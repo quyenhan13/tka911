@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { removeFromHistory, saveToHistory } from '../storage/watchHistory';
+import { getHistory, removeFromHistory, saveToHistory } from '../storage/watchHistory';
 import { toggleFavorite, isFavorite } from '../storage/favorites';
 import { CONFIG } from '../config';
 
@@ -37,9 +37,17 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     return Boolean(ep.embed_url_2 && (host === 'clbphimxua.com' || host.endsWith('.clbphimxua.com') || host === 'short.icu'));
   };
 
-  const selectEpisode = (ep: Episode) => {
+  const selectEpisode = (ep: Episode, movieDetails = details) => {
     setCurrentEp(ep);
     setActiveServer(shouldPreferServer2(ep) ? 2 : 1);
+    if (movieDetails) {
+      saveToHistory({
+        slug,
+        title: movieDetails.title,
+        poster: movieDetails.poster,
+        lastEpisode: ep.episode
+      });
+    }
   };
 
   useEffect(() => {
