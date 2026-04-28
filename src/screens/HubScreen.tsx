@@ -86,7 +86,7 @@ const HubScreen: React.FC = () => {
     <div className="flex flex-col gap-6 pb-10">
       <header 
         className="px-6 flex justify-between items-end pb-4 border-b border-white/10 bg-background/95 backdrop-blur-xl"
-        style={{ paddingTop: 'env(safe-area-inset-top)', minHeight: 'calc(env(safe-area-inset-top) + 3.5rem)' }}
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) - 10px)', minHeight: 'calc(env(safe-area-inset-top) + 3rem)' }}
       >
         <div>
           <h2 className="text-3xl font-black text-white">Private Hub</h2>
@@ -168,7 +168,7 @@ const HubScreen: React.FC = () => {
             {/* Header */}
             <div 
               className="px-6 flex items-center gap-5 pb-6 border-b border-white/10 bg-background/95 backdrop-blur-xl"
-              style={{ paddingTop: 'env(safe-area-inset-top)', minHeight: 'calc(env(safe-area-inset-top) + 3.5rem)' }}
+              style={{ paddingTop: 'calc(env(safe-area-inset-top) - 10px)', minHeight: 'calc(env(safe-area-inset-top) + 4rem)' }}
             >
               <button 
                 onClick={() => setSelectedItem(null)}
