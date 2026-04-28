@@ -100,7 +100,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         setError(result.message || `Khong tai duoc phim (${response.status})`);
       }
     } catch (err) {
-      setError('Không thể tải thông tin phim');
+      setError(err instanceof Error ? err.message : 'Khong the tai thong tin phim');
     } finally {
       setLoading(false);
     }
