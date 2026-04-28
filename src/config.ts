@@ -1,5 +1,5 @@
-// Kiểm tra xem có đang chạy trên trình duyệt máy tính (Development) không
-const isDev = window.location.hostname === 'localhost';
+// Capacitor iOS cũng chạy trên hostname "localhost"; chỉ coi là dev khi chạy Vite.
+const isDev = window.location.protocol.startsWith('http') && window.location.port === '5173';
 
 export const CONFIG = {
   // Nếu là Dev thì dùng đường dẫn tương đối để đi qua Proxy, nếu không thì dùng link thật
