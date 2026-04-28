@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from '@theme/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -8,4 +8,18 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://vteen.io.vn',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/embed.php': {
+        target: 'https://vteen.io.vn',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  }
 })
