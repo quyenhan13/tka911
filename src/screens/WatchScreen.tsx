@@ -47,7 +47,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
 
   const fetchDetails = async () => {
     try {
-      const response = await fetch(`${CONFIG.API_BASE_URL}/movie_detail.php?slug=${slug}`);
+      const response = await fetch(`${CONFIG.API_BASE_URL}/movie_detail.php?slug=${encodeURIComponent(slug)}`);
       const result = await response.json();
       if (result.status === 'success') {
         setDetails(result.data);
@@ -97,7 +97,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
     <div className="fixed inset-0 bg-background z-100 flex flex-col overflow-y-auto">
       {/* Video Player Area */}
       <div className="sticky top-0 z-50 w-full aspect-video bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center">
-        {currentEp ? (
+        {currentEp && currentEmbedUrl ? (
           <>
             <iframe 
               key={`${currentEp.episode}-${activeServer}`}
