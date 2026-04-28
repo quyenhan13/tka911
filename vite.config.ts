@@ -12,24 +12,28 @@ export default defineConfig({
     proxy: {
       // Đổi tất cả về localhost để bạn thấy phim trong máy mình
       '/api': {
-        target: 'http://localhost/vteen',
+        target: 'http://localhost',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => `/vteen${path}`,
       },
       '/embed.php': {
-        target: 'http://localhost/vteen',
+        target: 'http://localhost',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => `/vteen${path}`,
       },
       '/admin': {
-        target: 'http://localhost/vteen',
+        target: 'http://localhost',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => `/vteen${path}`,
       },
       '/uploads': {
-        target: 'http://localhost/vteen',
+        target: 'http://localhost',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => `/vteen${path}`,
       }
     }
   }
