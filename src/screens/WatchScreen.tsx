@@ -92,18 +92,20 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
   return (
     <div className="fixed inset-0 bg-background z-100 flex flex-col overflow-y-auto">
       {/* Video Player Area */}
-      <div className="sticky top-0 z-50 w-full aspect-video bg-black shadow-2xl">
+      <div className="sticky top-0 z-50 w-full aspect-video bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex items-center justify-center">
         {currentEp ? (
           <iframe 
             src={`${CONFIG.SITE_BASE_URL}/${currentEp.embed_url}`}
-            className="w-full h-full border-none"
+            className="w-full h-full"
+            style={{ minHeight: '210px' }}
             allowFullScreen
             allow="autoplay; encrypted-media"
             title="Player"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-text-dim text-xs uppercase tracking-tighter">
-            Không có link phát
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-[10px] text-text-dim uppercase tracking-widest">Đang kết nối trình phát...</span>
           </div>
         )}
         
