@@ -6,6 +6,7 @@ import LoginScreen from './screens/LoginScreen'
 import HubScreen from './screens/HubScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import { CapacitorUpdater } from '@capgo/capacitor-updater'
+import { CONFIG } from './config'
 import './index.css'
 
 function App() {
