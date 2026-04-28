@@ -51,8 +51,11 @@ const HubScreen: React.FC = () => {
   const isVideo = (path: string) => path.includes('vid_') || path.toLowerCase().match(/\.(mp4|mov|webm)$/);
 
   return (
-    <div className="flex flex-col gap-6 pb-10 pt-10">
-      <header className="px-6 flex justify-between items-end">
+    <div className="flex flex-col gap-6 pb-10">
+      <header 
+        className="px-6 flex justify-between items-end"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}
+      >
         <div>
           <h2 className="text-3xl font-black text-white">Private Hub</h2>
           <p className="text-text-dim text-xs uppercase tracking-widest mt-1">Dữ liệu cá nhân của bạn</p>
@@ -64,7 +67,10 @@ const HubScreen: React.FC = () => {
         </button>
       </header>
 
-      <div className="px-6 grid grid-cols-2 gap-3">
+      <div 
+        className="px-6 grid grid-cols-2 gap-3"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}
+      >
         {loading ? (
           [1,2,3,4].map(i => <div key={i} className="aspect-square bg-card rounded-3xl animate-pulse" />)
         ) : items.length === 0 ? (
