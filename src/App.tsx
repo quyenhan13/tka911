@@ -3,6 +3,10 @@ import BottomTabs from './components/BottomTabs'
 import HomeScreen from './screens/HomeScreen'
 import WatchScreen from './screens/WatchScreen'
 import LoginScreen from './screens/LoginScreen'
+import MoviesScreen from './screens/MoviesScreen'
+import VipScreen from './screens/VipScreen'
+import HubScreen from './screens/HubScreen'
+import ProfileScreen from './screens/ProfileScreen'
 import './index.css'
 
 function App() {
@@ -12,7 +16,6 @@ function App() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    // Kiểm tra session đã lưu trong máy
     const savedUser = localStorage.getItem('vteen_user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
@@ -55,56 +58,26 @@ function App() {
     );
   }
 
-  // Nếu chưa đăng nhập, hiện màn hình Login
   if (!user) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
     <div className="min-h-screen bg-background text-white overflow-x-hidden">
-      {/* Main Content Area */}
       <main className="animate-in fade-in duration-500">
         {activeTab === 'home' && <HomeScreen onWatch={handleWatch} />}
-        {activeTab === 'movies' && (
-          <div className="p-10 text-center text-text-dim pt-32">
-            <h2 className="text-xl font-bold mb-2">Kho Phim</h2>
-            <p>Tính năng đang được phát triển...</p>
-          </div>
-        )}
-        {activeTab === 'vip' && (
-          <div className="p-10 text-center text-text-dim pt-32">
-            <h2 className="text-xl font-bold mb-2 text-vip">Gói VIP</h2>
-            <p>Trải nghiệm xem phim không giới hạn.</p>
-          </div>
-        )}
-        {activeTab === 'hub' && (
-          <div className="p-10 text-center text-text-dim pt-32">
-            <h2 className="text-xl font-bold mb-2">Private Hub</h2>
-            <p>Lưu trữ nội dung cá nhân của bạn.</p>
-          </div>
-        )}
+        {activeTab === 'movies' && <MoviesScreen onWatch={handleWatch} />}
+        {activeTab === 'vip' && <VipScreen />}
+        {activeTab === 'hub' && <HubScreen />}
         {activeTab === 'profile' && (
-          <div className="p-10 text-center flex flex-col items-center pt-32">
-            <div className="w-24 h-24 rounded-full bg-linear-to-r from-primary to-violet-600 p-1 mb-4 shadow-xl shadow-primary/20">
-              <img 
-                src={`https://ui-avatars.com/api/?name=${user.display_name}&background=111&color=fff`} 
-                className="w-full h-full rounded-full object-cover"
-              />
-            </div>
-            <h2 className="text-2xl font-black text-white">{user.display_name}</h2>
-            <p className="text-text-dim text-xs uppercase tracking-widest mt-1">{user.role}</p>
-            
-            <button 
-              onClick={handleLogout}
-              className="mt-10 text-red-400 font-bold text-sm bg-red-400/10 px-8 py-3 rounded-2xl active:scale-95 transition-all"
-            >
-              ĐĂNG XUẤT
-            </button>
-          </div>
+          <ProfileScreen 
+            user={user} 
+            onLogout={handleLogout} 
+            onWatch={handleWatch} 
+          />
         )}
       </main>
 
-      {/* Watch Screen Overlay */}
       {watchingSlug && (
         <WatchScreen 
           slug={watchingSlug} 
@@ -112,7 +85,6 @@ function App() {
         />
       )}
 
-      {/* Navigation (Ẩn khi đang xem phim) */}
       {!watchingSlug && (
         <BottomTabs activeTab={activeTab} onTabChange={setActiveTab} />
       )}
