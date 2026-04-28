@@ -22,8 +22,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
     <div className="flex flex-col gap-8 pb-10">
       {/* Header User */}
       <div 
-        className="px-6 flex items-center gap-5"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.5rem)' }}
+        className="px-6 flex items-center gap-5 pb-6 border-b border-white/5"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.5rem)', minHeight: 'calc(env(safe-area-inset-top) + 5rem)' }}
       >
         <div className="w-20 h-20 rounded-full bg-linear-to-tr from-primary to-violet-600 p-1 shadow-xl shadow-primary/20">
           <img 

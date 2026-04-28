@@ -52,8 +52,8 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
     <div className="flex flex-col gap-4 pb-10">
       {/* Top Bar giống phim.php */}
       <header 
-        className="sticky top-0 z-50 px-6 pb-2 flex items-center justify-between bg-background/90 backdrop-blur-md border-b border-white/5"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}
+        className="sticky top-0 z-50 px-6 pb-4 flex items-center justify-between bg-background/95 backdrop-blur-xl border-b border-white/5"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.25rem)', minHeight: 'calc(env(safe-area-inset-top) + 4.5rem)' }}
       >
         <h1 className="text-xl font-black text-primary tracking-widest uppercase">VTEEN.IO.VN</h1>
         <Avatar size={36} isAdmin={true} />
