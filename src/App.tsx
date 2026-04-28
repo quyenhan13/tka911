@@ -4,7 +4,6 @@ import HomeScreen from './screens/HomeScreen'
 import WatchScreen from './screens/WatchScreen'
 import LoginScreen from './screens/LoginScreen'
 import MoviesScreen from './screens/MoviesScreen'
-import VipScreen from './screens/VipScreen'
 import HubScreen from './screens/HubScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import AdminScreen from './screens/AdminScreen'
@@ -70,7 +69,6 @@ function App() {
       <main className="animate-in fade-in duration-500">
         {activeTab === 'home' && <HomeScreen onWatch={handleWatch} />}
         {activeTab === 'movies' && <MoviesScreen onWatch={handleWatch} />}
-        {activeTab === 'vip' && <VipScreen />}
         {activeTab === 'hub' && <HubScreen />}
         {activeTab === 'admin' && isAdmin && <AdminScreen />}
         {activeTab === 'profile' && (
