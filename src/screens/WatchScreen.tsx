@@ -72,6 +72,8 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
     }
   };
 
+  const currentEmbedUrl = activeServer === 1 ? currentEp?.embed_url : currentEp?.embed_url_2;
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-background z-100 flex items-center justify-center">
@@ -92,31 +94,50 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
   return (
     <div className="fixed inset-0 bg-background z-100 flex flex-col overflow-y-auto">
       {/* Video Player Area */}
-      <div className="sticky top-0 z-50 w-full aspect-video bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex items-center justify-center">
+      <div className="sticky top-0 z-50 w-full aspect-video bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center">
         {currentEp ? (
-          <iframe 
-            src={`${CONFIG.SITE_BASE_URL}/${currentEp.embed_url}`}
-            className="w-full h-full"
-            style={{ minHeight: '210px' }}
-            allowFullScreen
-            allow="autoplay; encrypted-media"
-            title="Player"
-          />
+          <>
+            <iframe 
+              key={`${currentEp.episode}-${activeServer}`}
+              src={`${CONFIG.SITE_BASE_URL}/${currentEmbedUrl}`}
+              className="w-full h-full"
+              style={{ minHeight: '210px' }}
+              allowFullScreen
+              allow="autoplay; encrypted-media"
+              title="Player"
+            />
+            {/* Back Button Overlay */}
+            <button 
+              onClick={onBack}
+              className="absolute top-4 left-4 p-2 rounded-full bg-black/40 backdrop-blur-md text-white active:scale-90 transition-all"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+          </>
         ) : (
           <div className="flex flex-col items-center gap-2">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             <span className="text-[10px] text-text-dim uppercase tracking-widest">Đang kết nối trình phát...</span>
           </div>
         )}
-        
-        {/* Back Button Overlay */}
+      </div>
+
+      {/* Server Selector Buttons */}
+      <div className="px-6 py-4 flex gap-3 border-b border-white/5">
         <button 
-          onClick={onBack}
-          className="absolute top-4 left-4 p-2 rounded-full bg-black/40 backdrop-blur-md text-white active:scale-90 transition-all"
+          onClick={() => setActiveServer(1)}
+          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeServer === 1 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-card text-text-dim border border-white/5'}`}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
+          SERVER 1 (VTEEN)
+        </button>
+        <button 
+          disabled={!currentEp?.embed_url_2}
+          onClick={() => setActiveServer(2)}
+          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${!currentEp?.embed_url_2 ? 'opacity-20 grayscale' : (activeServer === 2 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-card text-text-dim border border-white/5')}`}
+        >
+          SERVER 2 (BACKUP)
         </button>
       </div>
 
