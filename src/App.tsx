@@ -17,7 +17,16 @@ function App() {
   useEffect(() => {
     const savedUser = localStorage.getItem('vteen_user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        if (parsedUser?.api_token) {
+          setUser(parsedUser);
+        } else {
+          localStorage.removeItem('vteen_user');
+        }
+      } catch {
+        localStorage.removeItem('vteen_user');
+      }
     }
 
     const timer = setTimeout(() => {
@@ -27,6 +36,10 @@ function App() {
   }, []);
 
   const handleLoginSuccess = (userData: any) => {
+    if (!userData?.api_token) {
+      localStorage.removeItem('vteen_user');
+      return;
+    }
     setUser(userData);
     localStorage.setItem('vteen_user', JSON.stringify(userData));
   };

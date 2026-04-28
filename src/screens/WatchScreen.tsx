@@ -62,9 +62,13 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     try {
       const savedUser = localStorage.getItem('vteen_user');
       const apiToken = savedUser ? JSON.parse(savedUser)?.api_token : null;
+      if (!apiToken) {
+        onUnauthorized?.();
+        return;
+      }
       const response = await fetch(`${CONFIG.API_BASE_URL}/movie_detail.php?slug=${encodeURIComponent(slug)}`, {
         credentials: 'include',
-        headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined,
+        headers: { Authorization: `Bearer ${apiToken}` },
       });
       const result = await response.json();
       if (result.status === 'success') {
