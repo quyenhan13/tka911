@@ -55,17 +55,8 @@ jobs:
           cp -R "$APP_PATH" Payload/VTeen.app
           zip -r VTeen-TrollStore.ipa Payload
 
-      - name: Package OTA Update
-        run: |
-          cd dist
-          zip -r ../dist.zip .
-          cd ..
-
-      - name: Upload IPA & OTA Bundle
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: VTeen-Release-Package
-          path: |
-            VTeen-TrollStore.ipa
-            dist.zip
-            public/version.json
+          name: VTeen-iOS-IPA
+          path: VTeen-TrollStore.ipa
