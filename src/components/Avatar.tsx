@@ -10,7 +10,7 @@ interface AvatarProps {
 
 const Avatar: React.FC<AvatarProps> = ({ 
   size = 40, 
-  src = '/default-avatar.png', 
+  src = 'https://ui-avatars.com/api/?name=VTeen&background=8B5CF6&color=fff', 
   isVip = false, 
   isAdmin = false,
   online = false 

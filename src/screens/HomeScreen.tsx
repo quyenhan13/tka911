@@ -21,19 +21,11 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     setHistory(getHistory());
-    
-    // Kiểm tra cache trong session để tránh fetch liên tục
-    const cached = sessionStorage.getItem('vteen_movies_cache');
-    if (cached) {
-      setMovies(JSON.parse(cached));
-      setLoading(false);
-    } else {
-      fetchMovies();
-    }
+    fetchMovies();
   }, []);
 
   const fetchMovies = async () => {
@@ -42,106 +34,83 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
       const result = await response.json();
       if (result.status === 'success') {
         setMovies(result.data);
-        sessionStorage.setItem('vteen_movies_cache', JSON.stringify(result.data));
-      } else {
-        setError(result.message);
       }
     } catch (err) {
-      setError('Không thể kết nối đến server');
+      console.error('Fetch error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  const filteredMovies = movies.filter(m => 
+    m.display_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="flex flex-col gap-6 pb-32">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 pt-12 pb-4">
-        <div>
-          <h2 className="text-2xl font-bold text-white">VTEEN Movies</h2>
-          <p className="text-text-dim text-sm">Chào mừng bạn trở lại!</p>
-        </div>
-        <Avatar size={44} isAdmin={true} online={true} />
+    <div className="flex flex-col gap-4 pb-32">
+      {/* Top Bar giống phim.php */}
+      <header className="px-6 pt-10 pb-2 flex items-center justify-between">
+        <h1 className="text-xl font-black text-primary tracking-widest uppercase">VTEEN.IO.VN</h1>
+        <Avatar size={36} isAdmin={true} />
       </header>
 
-      {/* Hero Banner (Placeholder) */}
+      {/* Search Input giống phim.php */}
       <div className="px-6">
-        <div className="relative aspect-video w-full rounded-3xl overflow-hidden glass group">
-          <img 
-            src="https://placehold.co/800x450/8B5CF6/ffffff?text=VTEEN+Exclusive" 
-            alt="Hero"
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+        <div className="relative group">
+          <input 
+            type="text" 
+            placeholder="Tìm tên phim..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-card/50 border border-border-glass rounded-2xl py-4 px-6 text-sm focus:outline-none focus:border-primary transition-all text-white placeholder:text-text-dim"
           />
-          <div className="absolute inset-0 bg-linear-to-t from-background via-background/20 to-transparent" />
-          <div className="absolute bottom-6 left-6 right-6">
-            <span className="bg-vip text-black text-[10px] font-extrabold px-2 py-1 rounded-sm uppercase tracking-widest">Featured</span>
-            <h1 className="text-3xl font-black mt-2 text-white drop-shadow-lg">Phim Mới Nhất</h1>
-            <button className="mt-4 bg-white text-black px-6 py-2.5 rounded-full font-bold text-sm shadow-xl active:scale-95 transition-transform">
-              Xem ngay
-            </button>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-text-dim">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
+              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
           </div>
         </div>
       </div>
 
-      {/* Continue Watching */}
-      {history.length > 0 && (
-        <section className="px-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-text-dim uppercase tracking-widest flex items-center gap-2">
-              <span className="w-1 h-4 bg-secondary rounded-full" />
-              Tiếp tục xem
-            </h3>
-          </div>
-          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+      {/* Tiếp tục xem (Nếu có) */}
+      {history.length > 0 && searchTerm === '' && (
+        <section className="px-6 py-2">
+          <h3 className="text-[10px] font-bold text-text-dim uppercase tracking-widest mb-4 opacity-50">Tiếp tục xem</h3>
+          <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
             {history.map((item) => (
               <div 
                 key={item.slug} 
-                className="flex-none w-32 group cursor-pointer"
+                className="flex-none w-28 group cursor-pointer"
                 onClick={() => onWatch(item.slug)}
               >
-                <div className="relative aspect-[2/3] rounded-lg overflow-hidden border border-border-glass shadow-md">
-                  <img src={item.poster} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/5 shadow-2xl">
+                  <img src={item.poster} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                   <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
-                    <div className="h-full bg-secondary w-2/3" />
+                    <div className="h-full bg-primary w-2/3" />
                   </div>
                 </div>
-                <p className="text-[10px] font-bold mt-2 truncate text-white">{item.title}</p>
-                <p className="text-[8px] text-text-dim uppercase">Tập {item.lastEpisode}</p>
+                <p className="text-[10px] font-bold mt-2 truncate text-white/80">{item.title}</p>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* Movie List */}
+      {/* Danh sách phim chính */}
       <section className="px-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-white">
-            <span className="w-1 h-6 bg-primary rounded-full" />
-            Phim mới cập nhật
-          </h3>
-          <button className="text-primary text-xs font-semibold">Xem tất cả</button>
-        </div>
+        <h3 className="text-[10px] font-bold text-text-dim uppercase tracking-widest mb-4 opacity-50">
+          {searchTerm ? `Kết quả cho "${searchTerm}"` : 'Tất cả phim'}
+        </h3>
 
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="aspect-[2/3] rounded-xl bg-card animate-pulse" />
+              <div key={i} className="aspect-[2/3] rounded-2xl bg-card animate-pulse" />
             ))}
           </div>
-        ) : error ? (
-          <div className="py-20 text-center text-text-dim bg-card rounded-2xl border border-border-glass">
-            <p>{error}</p>
-            <button 
-              onClick={fetchMovies}
-              className="mt-4 text-primary font-bold text-sm underline"
-            >
-              Thử lại
-            </button>
-          </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {movies.slice(0, 12).map((movie) => (
+          <div className="grid grid-cols-2 gap-4">
+            {filteredMovies.map((movie) => (
               <MovieCard 
                 key={movie.slug}
                 title={movie.display_name}
