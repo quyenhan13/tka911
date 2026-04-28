@@ -35,3 +35,9 @@ export const getHistory = (): HistoryItem[] => {
 export const clearHistory = () => {
   localStorage.removeItem(HISTORY_KEY);
 };
+
+export const removeFromHistory = (slug: string) => {
+  const history = getHistory();
+  const updated = history.filter(h => h.slug !== slug);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+};
