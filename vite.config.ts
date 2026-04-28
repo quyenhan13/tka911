@@ -23,11 +23,11 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => `/vteen${path}`,
       },
-      '/admin': {
+      '/vteen-admin': {
         target: 'http://localhost',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => `/vteen${path}`,
+        rewrite: (path) => path.replace(/^\/vteen-admin/, '/vteen/admin'),
       },
       '/uploads': {
         target: 'http://localhost',
