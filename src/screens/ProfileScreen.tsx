@@ -84,6 +84,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
                   <img src={item.poster} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 </div>
                 <p className="text-[9px] font-bold mt-2 truncate text-white/70 px-1">{item.title}</p>
+                {activeTab === 'history' && item.lastEpisode && (
+                  <p className="text-[8px] font-bold text-primary px-1 mt-0.5">Tap {item.lastEpisode}</p>
+                )}
               </div>
             ))
           )}

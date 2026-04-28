@@ -98,6 +98,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
                   </div>
                 </div>
                 <p className="text-[10px] font-bold mt-2 truncate text-white/80">{item.title}</p>
+                <p className="text-[9px] font-bold text-primary mt-0.5">Tap {item.lastEpisode}</p>
               </div>
             ))}
           </div>
