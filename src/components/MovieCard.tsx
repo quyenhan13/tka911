@@ -28,6 +28,9 @@ const MovieCard: React.FC<MovieCardProps> = ({
           alt={title} 
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           loading="lazy"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = 'https://placehold.co/300x450/111/444?text=VTeen';
+          }}
         />
         
         {/* Badges */}

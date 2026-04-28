@@ -19,6 +19,12 @@ export default defineConfig({
         target: 'https://vteen.io.vn',
         changeOrigin: true,
         secure: false,
+      },
+      // Thêm proxy cho thư mục ảnh để không bị website chặn
+      '/uploads': {
+        target: 'https://vteen.io.vn',
+        changeOrigin: true,
+        secure: false,
       }
     }
   }

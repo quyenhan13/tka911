@@ -84,7 +84,13 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
                 onClick={() => onWatch(item.slug)}
               >
                 <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/5 shadow-2xl">
-                  <img src={item.poster} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  <img 
+                    src={item.poster} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://placehold.co/300x450/111/444?text=VTeen';
+                    }}
+                  />
                   <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
                     <div className="h-full bg-primary w-2/3" />
                   </div>
