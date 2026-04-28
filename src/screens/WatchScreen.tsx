@@ -132,8 +132,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     <div className="fixed inset-0 bg-background z-[1000] flex flex-col overflow-hidden overscroll-none">
       {/* Header Bar */}
       <div 
-        className="shrink-0 px-4 py-3 flex items-center gap-3 border-b border-white/5 bg-background/50 backdrop-blur-xl"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
+        className="shrink-0 px-4 py-4 flex items-center gap-3 border-b border-white/5 bg-background/50 backdrop-blur-xl pt-[env(safe-area-inset-top)]"
       >
         <button 
           onClick={onBack}
