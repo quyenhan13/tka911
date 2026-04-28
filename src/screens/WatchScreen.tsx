@@ -93,12 +93,6 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           selectEpisode(savedEp || result.data.episodes[0], result.data);
           
           // Lưu vào lịch sử
-          saveToHistory({
-            slug,
-            title: result.data.title,
-            poster: result.data.poster,
-            lastEpisode: firstEp.episode
-          });
         }
       } else {
         if (response.status === 401) {
