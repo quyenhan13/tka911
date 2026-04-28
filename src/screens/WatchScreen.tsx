@@ -21,9 +21,10 @@ interface MovieDetails {
 interface WatchScreenProps {
   slug: string;
   onBack: () => void;
+  onUnauthorized?: () => void;
 }
 
-const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
+const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized }) => {
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [currentEp, setCurrentEp] = useState<Episode | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,7 +60,12 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
 
   const fetchDetails = async () => {
     try {
-      const response = await fetch(`${CONFIG.API_BASE_URL}/movie_detail.php?slug=${encodeURIComponent(slug)}`, { credentials: 'include' });
+      const savedUser = localStorage.getItem('vteen_user');
+      const apiToken = savedUser ? JSON.parse(savedUser)?.api_token : null;
+      const response = await fetch(`${CONFIG.API_BASE_URL}/movie_detail.php?slug=${encodeURIComponent(slug)}`, {
+        credentials: 'include',
+        headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : undefined,
+      });
       const result = await response.json();
       if (result.status === 'success') {
         setDetails(result.data);
@@ -76,6 +82,10 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
           });
         }
       } else {
+        if (response.status === 401) {
+          onUnauthorized?.();
+          return;
+        }
         removeFromHistory(slug);
         setError(result.message);
       }

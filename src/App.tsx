@@ -36,6 +36,7 @@ function App() {
     setUser(null);
     localStorage.removeItem('vteen_user');
     setActiveTab('home');
+    setWatchingSlug(null);
   };
 
   const handleWatch = (slug: string) => {
@@ -84,6 +85,7 @@ function App() {
         <WatchScreen 
           slug={watchingSlug} 
           onBack={() => setWatchingSlug(null)} 
+          onUnauthorized={handleLogout}
         />
       )}
 
