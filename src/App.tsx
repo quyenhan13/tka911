@@ -48,21 +48,6 @@ function App() {
     setWatchingSlug(slug);
   };
 
-  if (showSplash) {
-    return (
-      <div className="fixed inset-0 bg-background flex flex-col items-center justify-center z-500">
-        <div className="flex flex-col items-center animate-in zoom-in duration-500">
-          <div className="w-20 h-20 bg-linear-to-tr from-primary to-violet-600 rounded-3xl rotate-12 flex items-center justify-center shadow-2xl shadow-primary/40 mb-6">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-white -rotate-12">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-          </div>
-          <h1 className="text-4xl font-black text-white tracking-tighter">VTEEN</h1>
-          <div className="w-12 h-1 bg-primary mt-2 rounded-full animate-shimmer" />
-        </div>
-      </div>
-    );
-  }
 
   if (loading) return null;
 
