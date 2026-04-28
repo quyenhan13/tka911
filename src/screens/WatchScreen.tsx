@@ -88,8 +88,9 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       if (result.status === 'success') {
         setDetails(result.data);
         if (result.data.episodes.length > 0) {
-          const firstEp = result.data.episodes[0];
-          selectEpisode(firstEp);
+          const saved = getHistory().find(item => item.slug === slug);
+          const savedEp = saved ? result.data.episodes.find((ep: Episode) => ep.episode === saved.lastEpisode) : null;
+          selectEpisode(savedEp || result.data.episodes[0], result.data);
           
           // Lưu vào lịch sử
           saveToHistory({
