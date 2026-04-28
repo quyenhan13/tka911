@@ -27,6 +27,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fav, setFav] = useState(false);
+  const [activeServer, setActiveServer] = useState(1);
 
   useEffect(() => {
     setFav(isFavorite(slug));
