@@ -10,19 +10,19 @@ export default defineConfig({
   ],
   server: {
     proxy: {
+      // Đổi tất cả về localhost để bạn thấy phim trong máy mình
       '/api': {
-        target: 'https://vteen.io.vn',
+        target: 'http://localhost/vteen',
         changeOrigin: true,
         secure: false,
       },
       '/embed.php': {
-        target: 'https://vteen.io.vn',
+        target: 'http://localhost/vteen',
         changeOrigin: true,
         secure: false,
       },
-      // Thêm proxy cho thư mục ảnh để không bị website chặn
       '/uploads': {
-        target: 'https://vteen.io.vn',
+        target: 'http://localhost/vteen',
         changeOrigin: true,
         secure: false,
       }
