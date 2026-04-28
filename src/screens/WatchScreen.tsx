@@ -91,7 +91,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           return;
         }
         removeFromHistory(slug);
-        setError(result.message);
+        setError(result.message || `Khong tai duoc phim (${response.status})`);
       }
     } catch (err) {
       setError('Không thể tải thông tin phim');
