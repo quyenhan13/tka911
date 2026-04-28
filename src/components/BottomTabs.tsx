@@ -36,7 +36,7 @@ const BottomTabs: React.FC<BottomTabsProps> = ({ activeTab, onTabChange, isAdmin
     },
     ...(isAdmin ? [{ 
       id: 'admin', 
-      label: 'Admin', 
+      label: 'Upload', 
       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6"><path d="M12 2l7 4v6c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6l7-4z"/><path d="M9 12l2 2 4-5"/></svg> 
     }] : []),
     { 
