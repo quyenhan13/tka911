@@ -129,16 +129,15 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-100 flex flex-col overflow-y-auto">
+    <div className="fixed inset-0 bg-background z-100 flex flex-col overflow-hidden">
       {/* Video Player Area */}
-      <div className="sticky top-0 z-50 w-full aspect-video bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center">
+      <div className="relative z-50 w-full shrink-0 aspect-video max-h-[42vh] bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
         {currentEp && currentEmbedUrl ? (
           <>
             <iframe 
               key={`${currentEp.episode}-${activeServer}`}
               src={`${CONFIG.SITE_BASE_URL}/${currentEmbedUrl}`}
-              className="w-full h-full"
-              style={{ minHeight: '210px' }}
+              className="absolute inset-0 w-full h-full border-0 bg-black"
               allowFullScreen
               allow="autoplay; encrypted-media"
               title="Player"
@@ -162,7 +161,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       </div>
 
       {/* Server Selector Buttons */}
-      <div className="px-6 py-4 flex gap-3 border-b border-white/5">
+      <div className="shrink-0 px-6 py-4 flex gap-3 border-b border-white/5">
         <button 
           onClick={() => setActiveServer(1)}
           className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeServer === 1 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-card text-text-dim border border-white/5'}`}
@@ -179,7 +178,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       </div>
 
       {/* Info Area */}
-      <div className="flex-1 p-6 flex flex-col gap-6">
+      <div className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col gap-6">
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <h1 className="text-2xl font-black text-white leading-tight">{details.title}</h1>
