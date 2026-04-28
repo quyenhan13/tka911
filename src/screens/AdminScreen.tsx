@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { CONFIG } from '../config';
 
 const adminTools = [
-  { id: 'dashboard', label: 'Dashboard', path: '/index.php' },
-  { id: 'movies', label: 'Quan ly phim', path: '/suaphim.php' },
-  { id: 'add', label: 'Them phim', path: '/vippro.php' },
-  { id: 'links', label: 'Get link', path: '/getlink.php' },
-  { id: 'uploads', label: 'Upload', path: '/admin_upload.php' },
+  { id: 'dashboard', label: 'Dashboard', path: '/' },
+  { id: 'movies', label: 'Quan ly phim', path: '/suaphim' },
+  { id: 'add', label: 'Them phim', path: '/vippro' },
+  { id: 'links', label: 'Get link', path: '/getlink' },
+  { id: 'uploads', label: 'Upload', path: '/admin_upload' },
 ];
 
 const AdminScreen: React.FC = () => {
