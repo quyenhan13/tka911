@@ -44,7 +44,9 @@ const BottomTabs: React.FC<BottomTabsProps> = ({ activeTab, onTabChange }) => {
             <div className={`p-1.5 rounded-xl transition-colors ${activeTab === tab.id ? 'bg-primary/10' : ''}`}>
               {tab.icon}
             </div>
-            <span className="text-[10px] font-medium">{tab.label}</span>
+            <span className={`text-[11px] font-black uppercase tracking-tighter ${activeTab === tab.id ? 'text-primary' : 'text-text-dim'}`}>
+              {tab.label}
+            </span>
           </button>
         ))}
       </nav>
