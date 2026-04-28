@@ -113,7 +113,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-background z-100 flex items-center justify-center">
+      <div className="fixed inset-0 bg-background z-[1000] flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -121,7 +121,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
   if (error || !details) {
     return (
-      <div className="fixed inset-0 bg-background z-100 flex flex-col items-center justify-center p-10 text-center">
+      <div className="fixed inset-0 bg-background z-[1000] flex flex-col items-center justify-center p-10 text-center">
         <p className="text-text-dim mb-4">{error || 'Không tìm thấy phim'}</p>
         <button onClick={onBack} className="bg-primary px-6 py-2 rounded-full font-bold">Quay lại</button>
       </div>
@@ -129,7 +129,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-100 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-background z-[1000] flex flex-col overflow-hidden">
       {/* Video Player Area */}
       <div className="relative z-50 w-full shrink-0 aspect-video max-h-[42vh] bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
         {currentEp && currentEmbedUrl ? (
