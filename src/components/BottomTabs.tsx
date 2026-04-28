@@ -32,22 +32,22 @@ const BottomTabs: React.FC<BottomTabsProps> = ({ activeTab, onTabChange }) => {
 
   return (
     <div 
-      className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-5 pt-2 bg-linear-to-t from-background to-transparent pointer-events-none"
+      className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-3 pt-1 bg-linear-to-t from-background to-transparent pointer-events-none"
       style={{ bottom: 0 }}
     >
-      <nav className="glass flex items-center justify-around h-14 rounded-3xl px-4 shadow-2xl pointer-events-auto">
+      <nav className="glass flex items-center justify-around h-11 rounded-2xl px-3 shadow-2xl pointer-events-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`flex flex-col items-center justify-center gap-1 transition-all duration-300 w-16 ${
+            className={`flex flex-col items-center justify-center gap-0.5 transition-all duration-300 w-14 ${
               activeTab === tab.id ? 'text-primary scale-110' : 'text-text-dim hover:text-white'
             }`}
           >
-            <div className={`p-1.5 rounded-xl transition-colors ${activeTab === tab.id ? 'bg-primary/10' : ''}`}>
+            <div className={`p-1 rounded-lg transition-colors [&_svg]:h-5 [&_svg]:w-5 ${activeTab === tab.id ? 'bg-primary/10' : ''}`}>
               {tab.icon}
             </div>
-            <span className={`text-[11px] font-black uppercase tracking-tighter ${activeTab === tab.id ? 'text-primary' : 'text-text-dim'}`}>
+            <span className={`text-[9px] font-black uppercase tracking-tighter leading-none ${activeTab === tab.id ? 'text-primary' : 'text-text-dim'}`}>
               {tab.label}
             </span>
           </button>
