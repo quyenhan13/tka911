@@ -54,7 +54,7 @@ function App() {
   }
 
   return (
-    <div className="h-screen bg-background text-white relative overflow-hidden">
+    <div className="h-[100dvh] bg-background text-white relative overflow-hidden">
       <AnimatePresence mode="wait">
         <motion.main 
           key={activeTab}
