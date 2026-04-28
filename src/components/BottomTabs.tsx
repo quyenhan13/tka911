@@ -31,7 +31,10 @@ const BottomTabs: React.FC<BottomTabsProps> = ({ activeTab, onTabChange }) => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-5 pt-2 bg-linear-to-t from-background to-transparent pointer-events-none">
+    <div 
+      className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-5 pt-2 bg-linear-to-t from-background to-transparent pointer-events-none"
+      style={{ bottom: 0 }}
+    >
       <nav className="glass flex items-center justify-around h-14 rounded-3xl px-4 shadow-2xl pointer-events-auto">
         {tabs.map((tab) => (
           <button
