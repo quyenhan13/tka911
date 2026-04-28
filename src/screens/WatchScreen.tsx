@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ScreenOrientation } from '@capacitor/screen-orientation';
 import { getHistory, removeFromHistory, saveToHistory } from '../storage/watchHistory';
 import { toggleFavorite, isFavorite } from '../storage/favorites';
 import { CONFIG } from '../config';
