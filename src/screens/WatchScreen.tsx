@@ -69,12 +69,14 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       const url = `${CONFIG.API_BASE_URL}/movie_detail.php?slug=${encodeURIComponent(slug)}&api_token=${encodeURIComponent(apiToken)}`;
       const response = await fetch(url, {
         credentials: 'include',
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          'X-Vteen-Token': apiToken,
-        },
       });
-      const result = await response.json();
+      const text = await response.text();
+      let result: any;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        throw new Error(`API tra ve khong phai JSON (${response.status}): ${text.slice(0, 120)}`);
+      }
       if (result.status === 'success') {
         setDetails(result.data);
         if (result.data.episodes.length > 0) {
