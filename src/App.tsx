@@ -6,7 +6,6 @@ import WatchScreen from './screens/WatchScreen'
 import LoginScreen from './screens/LoginScreen'
 import HubScreen from './screens/HubScreen'
 import ProfileScreen from './screens/ProfileScreen'
-import { CONFIG } from './config'
 import './index.css'
 
 function App() {
@@ -47,7 +46,6 @@ function App() {
   const handleWatch = (slug: string) => {
     setWatchingSlug(slug);
   };
-
 
   if (loading) return null;
 
