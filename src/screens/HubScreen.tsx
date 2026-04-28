@@ -18,7 +18,7 @@ const HubScreen: React.FC = () => {
   const fetchHubData = async () => {
     try {
       // Giả định chúng ta có một API để lấy dữ liệu từ bảng images
-      const response = await fetch(`${CONFIG.SITE_BASE_URL}/api/hub_data.php`);
+      const response = await fetch(`${CONFIG.SITE_BASE_URL}/api/hub_data.php`, { credentials: 'include' });
       const result = await response.json();
       if (result.status === 'success') {
         setItems(result.data);

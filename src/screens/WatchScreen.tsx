@@ -59,7 +59,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
 
   const fetchDetails = async () => {
     try {
-      const response = await fetch(`${CONFIG.API_BASE_URL}/movie_detail.php?slug=${encodeURIComponent(slug)}`);
+      const response = await fetch(`${CONFIG.API_BASE_URL}/movie_detail.php?slug=${encodeURIComponent(slug)}`, { credentials: 'include' });
       const result = await response.json();
       if (result.status === 'success') {
         setDetails(result.data);
