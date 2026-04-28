@@ -1,0 +1,67 @@
+name: Build VTeen TrollStore IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web shell
+        run: npm run build
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Install CocoaPods
+        run: |
+          cd ios/App
+          pod install
+
+      - name: Build unsigned iOS app
+        run: |
+          xcodebuild clean build \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -derivedDataPath ios/App/build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PRODUCT_BUNDLE_IDENTIFIER=vn.io.vteen.app
+
+      - name: Package TrollStore IPA
+        run: |
+          APP_PATH=$(find ios/App/build -type d -name "*.app" | head -n 1)
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app found"
+            exit 1
+          fi
+          
+          rm -rf Payload
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/VTeen.app
+          zip -r VTeen-TrollStore.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: VTeen-TrollStore-IPA
+          path: VTeen-TrollStore.ipa
