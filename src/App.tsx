@@ -6,7 +6,6 @@ import LoginScreen from './screens/LoginScreen'
 import MoviesScreen from './screens/MoviesScreen'
 import HubScreen from './screens/HubScreen'
 import ProfileScreen from './screens/ProfileScreen'
-import AdminScreen from './screens/AdminScreen'
 import './index.css'
 
 function App() {
@@ -43,8 +42,6 @@ function App() {
     setWatchingSlug(slug);
   };
 
-  const isAdmin = user?.role === 'admin';
-
   if (showSplash) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col items-center justify-center z-500">
@@ -71,7 +68,6 @@ function App() {
         {activeTab === 'home' && <HomeScreen onWatch={handleWatch} />}
         {activeTab === 'movies' && <MoviesScreen onWatch={handleWatch} />}
         {activeTab === 'hub' && <HubScreen />}
-        {activeTab === 'admin' && isAdmin && <AdminScreen />}
         {activeTab === 'profile' && (
           <ProfileScreen 
             user={user} 
@@ -90,7 +86,7 @@ function App() {
       )}
 
       {!watchingSlug && (
-        <BottomTabs activeTab={activeTab} onTabChange={setActiveTab} isAdmin={isAdmin} />
+        <BottomTabs activeTab={activeTab} onTabChange={setActiveTab} />
       )}
     </div>
   )
