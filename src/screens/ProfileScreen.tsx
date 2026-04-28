@@ -23,7 +23,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
       {/* Header User */}
       <div 
         className="px-6 flex items-center gap-5 pb-6 border-b border-white/10 bg-background/95 backdrop-blur-xl"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2.5rem)', minHeight: 'calc(env(safe-area-inset-top) + 6rem)' }}
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)', minHeight: 'calc(env(safe-area-inset-top) + 6rem)' }}
       >
         <div className="w-20 h-20 rounded-full bg-linear-to-tr from-primary to-violet-600 p-1 shadow-xl shadow-primary/20">
           <img 
