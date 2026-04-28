@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CONFIG } from '../config';
 
 interface UploadItem {
@@ -83,8 +84,8 @@ const HubScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 pb-10">
-      <div 
-        className="px-6 flex items-center gap-5 pb-6 border-b border-white/10 bg-background/95 backdrop-blur-xl"
+      <header 
+        className="px-6 flex justify-between items-end pb-4 border-b border-white/10 bg-background/95 backdrop-blur-xl"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2.5rem)', minHeight: 'calc(env(safe-area-inset-top) + 6rem)' }}
       >
         <div>
@@ -111,7 +112,7 @@ const HubScreen: React.FC = () => {
           accept="image/*,video/*" 
           hidden 
         />
-      </div>
+      </header>
 
       <div 
         className="px-6 grid grid-cols-2 gap-3"
@@ -155,82 +156,90 @@ const HubScreen: React.FC = () => {
       </div>
 
       {/* Detail View Overlay (Giống p.php) */}
-      {selectedItem && (
-        <div className="fixed inset-0 bg-background z-[2000] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-300">
-          {/* Header */}
-          <div 
-            className="shrink-0 px-6 py-4 flex items-center gap-4 border-b border-white/5 bg-background/50 backdrop-blur-xl"
-            style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}
+      <AnimatePresence>
+        {selectedItem && (
+          <motion.div 
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 bg-background z-[2000] flex flex-col overflow-hidden"
           >
-            <button 
-              onClick={() => setSelectedItem(null)}
-              className="p-2.5 rounded-xl bg-white/5 text-white active:scale-90 transition-all"
+            {/* Header */}
+            <div 
+              className="shrink-0 px-6 py-4 flex items-center gap-4 border-b border-white/10 bg-background/95 backdrop-blur-xl"
+              style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2.5rem)', minHeight: 'calc(env(safe-area-inset-top) + 6rem)' }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
-            </button>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-sm font-bold text-white truncate">{selectedItem.original_name}</h2>
-              <p className="text-[10px] text-text-dim uppercase tracking-widest">Chi tiết tệp tin</p>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8 overscroll-none">
-            {/* Media Box */}
-            <div className="relative w-full aspect-square rounded-[2.5rem] overflow-hidden bg-black shadow-2xl border border-white/5 group">
-              {isVideo(selectedItem.file_path) ? (
-                <video 
-                  controls 
-                  playsInline 
-                  className="w-full h-full object-contain"
-                  src={`${CONFIG.SITE_BASE_URL}/stream.php?code=${selectedItem.short_code}`}
-                />
-              ) : (
-                <img 
-                  src={`${CONFIG.SITE_BASE_URL}/stream.php?code=${selectedItem.short_code}`} 
-                  className="w-full h-full object-contain"
-                  alt={selectedItem.original_name}
-                />
-              )}
-            </div>
-
-            {/* Share Link Box (Cyber Style) */}
-            <div className="bg-card/50 border border-border-glass rounded-[2rem] p-6 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="w-20 h-20">
-                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
-                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+              <button 
+                onClick={() => setSelectedItem(null)}
+                className="p-2.5 rounded-xl bg-white/5 text-white active:scale-90 transition-all"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
+              </button>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-bold text-white truncate">{selectedItem.original_name}</h2>
+                <p className="text-[10px] text-text-dim uppercase tracking-widest">Chi tiết tệp tin</p>
               </div>
-              
-              <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                Link chia sẻ trực tiếp
-              </h4>
+            </div>
 
-              <div className="flex flex-col gap-3">
-                <div className="bg-black/40 rounded-xl px-4 py-3 border border-white/5 break-all text-xs font-mono text-text-dim leading-relaxed">
-                  {`${CONFIG.SITE_BASE_URL}/p.php?code=${selectedItem.short_code}`}
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8 overscroll-none">
+              {/* Media Box */}
+              <div className="relative w-full aspect-square rounded-[2.5rem] overflow-hidden bg-black shadow-2xl border border-white/5 group">
+                {isVideo(selectedItem.file_path) ? (
+                  <video 
+                    controls 
+                    playsInline 
+                    className="w-full h-full object-contain"
+                    src={`${CONFIG.SITE_BASE_URL}/stream.php?code=${selectedItem.short_code}`}
+                  />
+                ) : (
+                  <img 
+                    src={`${CONFIG.SITE_BASE_URL}/stream.php?code=${selectedItem.short_code}`} 
+                    className="w-full h-full object-contain"
+                    alt={selectedItem.original_name}
+                  />
+                )}
+              </div>
+
+              {/* Share Link Box (Cyber Style) */}
+              <div className="bg-card/50 border border-border-glass rounded-[2rem] p-6 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="w-20 h-20">
+                    <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                  </svg>
                 </div>
-                <button 
-                  onClick={() => handleCopy(`${CONFIG.SITE_BASE_URL}/p.php?code=${selectedItem.short_code}`)}
-                  className={`w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${copied ? 'bg-success text-white' : 'bg-primary text-white shadow-lg shadow-primary/20'}`}
-                >
-                  {copied ? 'ĐÃ SAO CHÉP!' : 'SAO CHÉP LIÊN KẾT'}
-                </button>
+                
+                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  Link chia sẻ trực tiếp
+                </h4>
+
+                <div className="flex flex-col gap-3">
+                  <div className="bg-black/40 rounded-xl px-4 py-3 border border-white/5 break-all text-xs font-mono text-text-dim leading-relaxed">
+                    {`${CONFIG.SITE_BASE_URL}/p.php?code=${selectedItem.short_code}`}
+                  </div>
+                  <button 
+                    onClick={() => handleCopy(`${CONFIG.SITE_BASE_URL}/p.php?code=${selectedItem.short_code}`)}
+                    className={`w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${copied ? 'bg-success text-white' : 'bg-primary text-white shadow-lg shadow-primary/20'}`}
+                  >
+                    {copied ? 'ĐÃ SAO CHÉP!' : 'SAO CHÉP LIÊN KẾT'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer Info */}
+              <div className="text-center py-4">
+                  <p className="text-[10px] font-bold text-text-dim uppercase tracking-widest opacity-40">
+                    Hệ thống truyền tải bảo mật VTEEN CLOUD
+                  </p>
               </div>
             </div>
-
-            {/* Footer Info */}
-            <div className="text-center py-4">
-                <p className="text-[10px] font-bold text-text-dim uppercase tracking-widest opacity-40">
-                  Hệ thống truyền tải bảo mật VTEEN CLOUD
-                </p>
-            </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
