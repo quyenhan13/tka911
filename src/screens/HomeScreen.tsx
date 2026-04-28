@@ -51,7 +51,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   return (
     <div className="flex flex-col gap-4 pb-32">
       {/* Top Bar giống phim.php */}
-      <header className="px-6 pt-10 pb-2 flex items-center justify-between">
+      <header className="sticky top-0 z-50 px-6 pt-10 pb-2 flex items-center justify-between bg-background/90 backdrop-blur-md">
         <h1 className="text-xl font-black text-primary tracking-widest uppercase">VTEEN.IO.VN</h1>
         <Avatar size={36} isAdmin={true} />
       </header>

@@ -53,7 +53,7 @@ const MoviesScreen: React.FC<{ onWatch: (slug: string) => void }> = ({ onWatch }
 
   return (
     <div className="flex flex-col gap-6 pb-32">
-      <header className="px-6 pt-10">
+      <header className="sticky top-0 z-50 px-6 pt-10 pb-4 bg-background/90 backdrop-blur-md">
         <h2 className="text-3xl font-black text-white">Kho Phim</h2>
         <p className="text-text-dim text-xs uppercase tracking-widest mt-1">Khám phá nội dung vô tận</p>
       </header>

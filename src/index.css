@@ -16,6 +16,7 @@
   background-color: var(--color-background);
   color: white;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overscroll-behavior: none;
 }
 
 body {
@@ -26,6 +27,7 @@ body {
   min-height: 100vh;
   -webkit-tap-highlight-color: transparent;
   background-color: var(--color-background);
+  overscroll-behavior: none;
 }
 
 /* Glassmorphism utility */
