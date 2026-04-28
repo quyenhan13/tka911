@@ -9,9 +9,10 @@ interface Tab {
 interface BottomTabsProps {
   activeTab: string;
   onTabChange: (id: string) => void;
+  isAdmin?: boolean;
 }
 
-const BottomTabs: React.FC<BottomTabsProps> = ({ activeTab, onTabChange }) => {
+const BottomTabs: React.FC<BottomTabsProps> = ({ activeTab, onTabChange, isAdmin = false }) => {
   const tabs: Tab[] = [
     { 
       id: 'home', 
@@ -33,6 +34,11 @@ const BottomTabs: React.FC<BottomTabsProps> = ({ activeTab, onTabChange }) => {
       label: 'Hub', 
       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> 
     },
+    ...(isAdmin ? [{ 
+      id: 'admin', 
+      label: 'Admin', 
+      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6"><path d="M12 2l7 4v6c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6l7-4z"/><path d="M9 12l2 2 4-5"/></svg> 
+    }] : []),
     { 
       id: 'profile', 
       label: 'Tôi', 

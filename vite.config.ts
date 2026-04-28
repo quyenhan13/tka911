@@ -21,6 +21,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/admin': {
+        target: 'http://localhost/vteen',
+        changeOrigin: true,
+        secure: false,
+      },
       '/uploads': {
         target: 'http://localhost/vteen',
         changeOrigin: true,
