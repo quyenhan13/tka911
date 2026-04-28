@@ -3,7 +3,6 @@ import BottomTabs from './components/BottomTabs'
 import HomeScreen from './screens/HomeScreen'
 import WatchScreen from './screens/WatchScreen'
 import LoginScreen from './screens/LoginScreen'
-import MoviesScreen from './screens/MoviesScreen'
 import HubScreen from './screens/HubScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import './index.css'
@@ -79,7 +78,6 @@ function App() {
     <div className="h-screen bg-background text-white flex flex-col overflow-hidden">
       <main className="flex-1 overflow-y-auto overscroll-none relative z-0 animate-in fade-in duration-500">
         {activeTab === 'home' && <HomeScreen onWatch={handleWatch} />}
-        {activeTab === 'movies' && <MoviesScreen onWatch={handleWatch} />}
         {activeTab === 'hub' && <HubScreen />}
         {activeTab === 'profile' && (
           <ProfileScreen 
