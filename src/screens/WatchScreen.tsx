@@ -129,7 +129,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-[1000] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-background z-[1000] flex flex-col overflow-hidden overscroll-none">
       {/* Header Bar */}
       <div 
         className="shrink-0 px-4 py-3 flex items-center gap-3 border-b border-white/5 bg-background/50 backdrop-blur-xl"
