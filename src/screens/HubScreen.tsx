@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { CONFIG } from '../config';
 
 interface UploadItem {
@@ -10,8 +10,10 @@ interface UploadItem {
 const HubScreen: React.FC = () => {
   const [items, setItems] = useState<UploadItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<UploadItem | null>(null);
   const [copied, setCopied] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchHubData();
@@ -28,6 +30,35 @@ const HubScreen: React.FC = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(`${CONFIG.SITE_BASE_URL}/api/upload.php`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        fetchHubData(); // Tải lại danh sách
+      } else {
+        alert(result.message || 'Lỗi khi tải lên');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Không thể kết nối đến server');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -60,11 +91,26 @@ const HubScreen: React.FC = () => {
           <h2 className="text-3xl font-black text-white">Private Hub</h2>
           <p className="text-text-dim text-xs uppercase tracking-widest mt-1">Dữ liệu cá nhân của bạn</p>
         </div>
-        <button className="bg-primary p-3 rounded-2xl shadow-lg shadow-primary/20 active:scale-90 transition-all">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5 text-white">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
+        <button 
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className={`bg-primary p-3 rounded-2xl shadow-lg shadow-primary/20 active:scale-90 transition-all ${uploading ? 'opacity-50 animate-pulse' : ''}`}
+        >
+          {uploading ? (
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5 text-white">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          )}
         </button>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleUpload} 
+          accept="image/*,video/*" 
+          hidden 
+        />
       </div>
 
       <div 
