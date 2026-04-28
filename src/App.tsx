@@ -6,7 +6,6 @@ import WatchScreen from './screens/WatchScreen'
 import LoginScreen from './screens/LoginScreen'
 import HubScreen from './screens/HubScreen'
 import ProfileScreen from './screens/ProfileScreen'
-import { CapacitorUpdater } from '@capgo/capacitor-updater'
 import { CONFIG } from './config'
 import './index.css'
 
@@ -17,23 +16,6 @@ function App() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    // Logic cập nhật tự động (OTA)
-    const checkForUpdates = async () => {
-      try {
-        // Chỉ chạy trên thiết bị thật (iOS/Android)
-        const response = await fetch(`${CONFIG.SITE_BASE_URL}/app/version.json`, { cache: 'no-store' });
-        const latest = await response.json();
-        const currentVersion = localStorage.getItem('vteen_app_version') || CONFIG.VERSION;
-
-        if (latest.version && latest.version !== currentVersion) {
-          console.log('Đang tải bản cập nhật mới:', latest.version);
-          const bundle = await CapacitorUpdater.download({
-            url: `${CONFIG.SITE_BASE_URL}/app/dist.zip`,
-            version: latest.version,
-          });
-          
-          await CapacitorUpdater.set(bundle);
-          localStorage.setItem('vteen_app_version', latest.version);
           // Reload để áp dụng ngay
           window.location.reload();
         }
