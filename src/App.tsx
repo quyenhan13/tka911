@@ -72,26 +72,28 @@ function App() {
 
   return (
     <div className="h-screen bg-background text-white flex flex-col overflow-hidden">
-      <AnimatePresence mode="wait">
-        <motion.main 
-          key={activeTab}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="flex-1 overflow-y-auto overscroll-none relative z-0"
-        >
-          {activeTab === 'home' && <HomeScreen onWatch={handleWatch} />}
-          {activeTab === 'hub' && <HubScreen />}
-          {activeTab === 'profile' && (
-            <ProfileScreen 
-              user={user} 
-              onLogout={handleLogout} 
-              onWatch={handleWatch} 
-            />
-          )}
-        </motion.main>
-      </AnimatePresence>
+      <div className="flex-1 overflow-hidden relative">
+        <AnimatePresence mode="wait">
+          <motion.main 
+            key={activeTab}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="absolute inset-0 overflow-y-auto overscroll-none"
+          >
+            {activeTab === 'home' && <HomeScreen onWatch={handleWatch} />}
+            {activeTab === 'hub' && <HubScreen />}
+            {activeTab === 'profile' && (
+              <ProfileScreen 
+                user={user} 
+                onLogout={handleLogout} 
+                onWatch={handleWatch} 
+              />
+            )}
+          </motion.main>
+        </AnimatePresence>
+      </div>
 
       <AnimatePresence>
         {watchingSlug && (
