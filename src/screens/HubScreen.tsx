@@ -65,7 +65,7 @@ const HubScreen: React.FC = () => {
             <path d="M12 5v14M5 12h14"/>
           </svg>
         </button>
-      </header>
+      </div>
 
       <div 
         className="px-6 grid grid-cols-2 gap-3"
