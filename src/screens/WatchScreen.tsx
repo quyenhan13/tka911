@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ScreenOrientation } from '@capacitor/screen-orientation';
+import { ScreenOrientation as OrientationPlugin } from '@capacitor/screen-orientation';
 import { getHistory, removeFromHistory, saveToHistory } from '../storage/watchHistory';
 import { toggleFavorite, isFavorite } from '../storage/favorites';
 import { CONFIG } from '../config';
@@ -37,7 +37,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     // Cho phép xoay màn hình khi xem phim
     const enableRotation = async () => {
       try {
-        await ScreenOrientation.unlock();
+        await OrientationPlugin.unlock();
       } catch (e) {
         console.warn('Orientation lock not supported', e);
       }
@@ -47,7 +47,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
     return () => {
       // Khóa lại màn hình đứng khi thoát
-      ScreenOrientation.lock({ orientation: 'portrait' }).catch(() => {});
+      OrientationPlugin.lock({ orientation: 'portrait' }).catch(() => {});
     };
   }, []);
 
