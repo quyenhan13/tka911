@@ -51,7 +51,7 @@ const HubScreen: React.FC = () => {
   const isVideo = (path: string) => path.includes('vid_') || path.toLowerCase().match(/\.(mp4|mov|webm)$/);
 
   return (
-    <div className="flex flex-col gap-6 pb-32 pt-10">
+    <div className="flex flex-col gap-6 pb-10 pt-10">
       <header className="px-6 flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-black text-white">Private Hub</h2>
