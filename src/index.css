@@ -21,7 +21,7 @@
 body {
   margin: 0;
   padding: 0;
-  padding-top: env(safe-area-inset-top);
+  padding-top: max(20px, env(safe-area-inset-top));
   padding-bottom: env(safe-area-inset-bottom);
   min-height: 100vh;
   -webkit-tap-highlight-color: transparent;
