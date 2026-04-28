@@ -11,7 +11,7 @@ const adminTools = [
 
 const AdminScreen: React.FC = () => {
   const [activePath, setActivePath] = useState(adminTools[0].path);
-  const src = `${CONFIG.SITE_BASE_URL}${activePath}`;
+  const src = `${CONFIG.ADMIN_BASE_URL}${activePath}`;
 
   return (
     <div className="fixed inset-0 bg-background z-40 flex flex-col pb-24">
