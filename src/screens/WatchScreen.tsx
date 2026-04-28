@@ -32,6 +32,24 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   const [fav, setFav] = useState(false);
   const [activeServer, setActiveServer] = useState(1);
 
+  useEffect(() => {
+    // Cho phép xoay màn hình khi xem phim
+    const enableRotation = async () => {
+      try {
+        await ScreenOrientation.unlock();
+      } catch (e) {
+        console.warn('Orientation lock not supported', e);
+      }
+    };
+    
+    enableRotation();
+
+    return () => {
+      // Khóa lại màn hình đứng khi thoát
+      ScreenOrientation.lock({ orientation: 'portrait' }).catch(() => {});
+    };
+  }, []);
+
   const shouldPreferServer2 = (ep: Episode) => {
     const host = (ep.embed_host || '').toLowerCase();
     return Boolean(ep.embed_url_2 && (host === 'clbphimxua.com' || host.endsWith('.clbphimxua.com') || host === 'short.icu'));
