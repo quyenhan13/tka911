@@ -76,8 +76,8 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-white overflow-x-hidden">
-      <main className="relative z-0 animate-in fade-in duration-500">
+    <div className="h-screen bg-background text-white flex flex-col overflow-hidden">
+      <main className="flex-1 overflow-y-auto overscroll-none relative z-0 animate-in fade-in duration-500">
         {activeTab === 'home' && <HomeScreen onWatch={handleWatch} />}
         {activeTab === 'movies' && <MoviesScreen onWatch={handleWatch} />}
         {activeTab === 'hub' && <HubScreen />}

@@ -13,6 +13,8 @@
 }
 
 :root {
+  height: 100%;
+  overflow: hidden;
   background-color: var(--color-background);
   color: white;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -22,9 +24,8 @@
 body {
   margin: 0;
   padding: 0;
-  padding-top: max(20px, env(safe-area-inset-top));
-  padding-bottom: env(safe-area-inset-bottom);
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
   -webkit-tap-highlight-color: transparent;
   background-color: var(--color-background);
   overscroll-behavior: none;
