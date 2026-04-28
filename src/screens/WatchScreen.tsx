@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { saveToHistory } from '../storage/watchHistory';
+import { removeFromHistory, saveToHistory } from '../storage/watchHistory';
 import { toggleFavorite, isFavorite } from '../storage/favorites';
 import { CONFIG } from '../config';
 
@@ -64,6 +64,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack }) => {
           });
         }
       } else {
+        removeFromHistory(slug);
         setError(result.message);
       }
     } catch (err) {

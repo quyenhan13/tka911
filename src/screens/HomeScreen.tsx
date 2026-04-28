@@ -45,6 +45,8 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   const filteredMovies = movies.filter(m => 
     m.display_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const validSlugs = new Set(movies.map(m => m.slug));
+  const validHistory = history.filter(item => validSlugs.has(item.slug));
 
   return (
     <div className="flex flex-col gap-4 pb-32">
@@ -73,11 +75,11 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
       </div>
 
       {/* Tiếp tục xem (Nếu có) */}
-      {history.length > 0 && searchTerm === '' && (
+      {validHistory.length > 0 && searchTerm === '' && (
         <section className="px-6 py-2">
           <h3 className="text-[10px] font-bold text-text-dim uppercase tracking-widest mb-4 opacity-50">Tiếp tục xem</h3>
           <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
-            {history.map((item) => (
+            {validHistory.map((item) => (
               <div 
                 key={item.slug} 
                 className="flex-none w-28 group cursor-pointer"
