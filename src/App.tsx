@@ -11,38 +11,21 @@ import './index.css'
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
-  const [showSplash, setShowSplash] = useState(true);
   const [watchingSlug, setWatchingSlug] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-          // Reload để áp dụng ngay
-          window.location.reload();
-        }
-      } catch (err) {
-        console.log('Chế độ Dev hoặc lỗi kết nối update server');
-      }
-    };
-
     const savedUser = localStorage.getItem('vteen_user');
     if (savedUser) {
       try {
-        const parsedUser = JSON.parse(savedUser);
-        if (parsedUser?.api_token) {
-          setUser(parsedUser);
-        } else {
-          localStorage.removeItem('vteen_user');
-        }
-      } catch {
+        const parsed = JSON.parse(savedUser);
+        if (parsed?.api_token) setUser(parsed);
+      } catch (e) {
         localStorage.removeItem('vteen_user');
       }
     }
-
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-      checkForUpdates(); // Kiểm tra sau khi splash xong
-    }, 2000);
-    return () => clearTimeout(timer);
+    setLoading(false);
   }, []);
 
   const handleLoginSuccess = (userData: any) => {
@@ -81,6 +64,8 @@ function App() {
     );
   }
 
+  if (loading) return null;
+
   if (!user) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
@@ -108,13 +93,23 @@ function App() {
         </motion.main>
       </AnimatePresence>
 
-      {watchingSlug && (
-        <WatchScreen 
-          slug={watchingSlug} 
-          onBack={() => setWatchingSlug(null)} 
-          onUnauthorized={handleLogout}
-        />
-      )}
+      <AnimatePresence>
+        {watchingSlug && (
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[1000]"
+          >
+            <WatchScreen 
+              slug={watchingSlug} 
+              onBack={() => setWatchingSlug(null)} 
+              onUnauthorized={handleLogout}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {!watchingSlug && (
         <BottomTabs activeTab={activeTab} onTabChange={setActiveTab} />
