@@ -104,17 +104,26 @@ function App() {
 
   return (
     <div className="h-screen bg-background text-white flex flex-col overflow-hidden">
-      <main className="flex-1 overflow-y-auto overscroll-none relative z-0 animate-in fade-in duration-500">
-        {activeTab === 'home' && <HomeScreen onWatch={handleWatch} />}
-        {activeTab === 'hub' && <HubScreen />}
-        {activeTab === 'profile' && (
-          <ProfileScreen 
-            user={user} 
-            onLogout={handleLogout} 
-            onWatch={handleWatch} 
-          />
-        )}
-      </main>
+      <AnimatePresence mode="wait">
+        <motion.main 
+          key={activeTab}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="flex-1 overflow-y-auto overscroll-none relative z-0"
+        >
+          {activeTab === 'home' && <HomeScreen onWatch={handleWatch} />}
+          {activeTab === 'hub' && <HubScreen />}
+          {activeTab === 'profile' && (
+            <ProfileScreen 
+              user={user} 
+              onLogout={handleLogout} 
+              onWatch={handleWatch} 
+            />
+          )}
+        </motion.main>
+      </AnimatePresence>
 
       {watchingSlug && (
         <WatchScreen 
