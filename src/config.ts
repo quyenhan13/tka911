@@ -6,5 +6,5 @@ export const CONFIG = {
   API_BASE_URL: useLocalApi ? '/api' : 'https://vteen.io.vn/api',
   SITE_BASE_URL: useLocalApi ? '' : 'https://vteen.io.vn',
   APP_NAME: 'VTeen',
-  VERSION: '1.0.0'
+  VERSION: '1.0.1'
 };
