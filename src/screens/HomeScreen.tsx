@@ -55,7 +55,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
         className="sticky top-0 z-50 px-6 pb-3 flex items-center justify-between border-b border-white/5 bg-background/95 backdrop-blur-xl"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2rem)', minHeight: 'calc(env(safe-area-inset-top) + 5rem)' }}
       >
-        <h1 className="text-xl font-black text-primary tracking-widest uppercase">VTEEN.IO.VN</h1>
+        <h1 className="text-xl font-black text-primary tracking-widest uppercase">VTEEN.SHOP</h1>
         <Avatar size={36} isAdmin={true} />
       </header>
 
