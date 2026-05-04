@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import BottomTabs from './components/BottomTabs'
 import HomeScreen from './screens/HomeScreen'
@@ -41,11 +41,20 @@ function App() {
   const ytListeningRef = useRef(false);
   const pendingPlayRef = useRef<Video | null>(null);
   const playRetryTimersRef = useRef<number[]>([]);
+  const ytSendPlayRef = useRef<(video: Video) => void>(() => {});
+  const iframeLoadGenRef = useRef(0);
   const embedOrigin =
     typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
-  const iframeSrc =
-    `https://www.youtube.com/embed/jfKfPfyJRdk?enablejsapi=1&playsinline=1&controls=0&autoplay=0&mute=0` +
-    (embedOrigin ? `&origin=${encodeURIComponent(embedOrigin)}` : '');
+  const bootVideoId = 'jfKfPfyJRdk';
+  const embedVideoId = currentVideo?.id ?? bootVideoId;
+  const iframeSrc = useMemo(() => {
+    const id = currentVideo?.id ?? bootVideoId;
+    const ap = currentVideo ? 1 : 0;
+    return (
+      `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=0&autoplay=${ap}&mute=1&modestbranding=1&rel=0` +
+      (embedOrigin ? `&origin=${encodeURIComponent(embedOrigin)}` : '')
+    );
+  }, [currentVideo, embedOrigin]);
 
   // Send postMessage to YouTube iframe
   const sendCommand = useCallback((func: string, args?: any[]) => {
@@ -80,7 +89,7 @@ function App() {
           const pending = pendingPlayRef.current;
           if (pending) {
             pendingPlayRef.current = null;
-            ytSendPlay(pending);
+            ytSendPlayRef.current(pending);
           }
         }
 
@@ -132,15 +141,19 @@ function App() {
         sendCommand('getCurrentTime');
       };
 
-      // iOS/WKWebView có thể nuốt lệnh đầu; gửi lại theo nhiều nhịp để đảm bảo phát.
+      // iOS: autoplay thường cần mute=1 trên URL rồi unMute; gửi lại lệnh nhiều nhịp.
       perform();
-      [120, 380, 850, 1600].forEach((ms) => {
+      [120, 380, 850, 1600, 2600].forEach((ms) => {
         const timer = window.setTimeout(perform, ms);
         playRetryTimersRef.current.push(timer);
       });
     },
     [sendCommand]
   );
+
+  useEffect(() => {
+    ytSendPlayRef.current = ytSendPlay;
+  }, [ytSendPlay]);
 
   const stopProgressLoop = () => {
     if (progressInterval.current) {
@@ -152,18 +165,20 @@ function App() {
   const playVideo = useCallback(
     (video: Video, list?: Video[]) => {
       if (list) playlistRef.current = list;
+      pendingPlayRef.current = video;
+      const sameTrack = currentVideo?.id === video.id;
       setCurrentVideo(video);
       setCurrentTime(0);
       setDuration(0);
       setIsPlaying(true);
       if (activeTab === 'tube') setTubeExpanded(true);
-      if (!ytListeningRef.current) {
-        pendingPlayRef.current = video;
+      if (sameTrack && ytListeningRef.current) {
+        ytSendPlay(video);
         return;
       }
-      ytSendPlay(video);
+      ytListeningRef.current = false;
     },
-    [ytSendPlay, activeTab]
+    [ytSendPlay, activeTab, currentVideo?.id]
   );
 
   useEffect(() => {
@@ -256,6 +271,10 @@ function App() {
     localStorage.removeItem('vteen_user');
     setActiveTab('home');
     setWatchingSlug(null);
+    setCurrentVideo(null);
+    setTubeExpanded(false);
+    pendingPlayRef.current = null;
+    ytListeningRef.current = false;
   };
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -461,41 +480,44 @@ function App() {
       )}
 
       {/*
-        Trực tiếp nhúng iframe để vượt mặt WebView iOS.
-        ID jfKfPfyJRdk (Lofi Girl) làm video mồi để YouTube load JS nội bộ.
+        Iframe thật kích thước tối thiểu (WKWebView hay không decode video nếu 1×1 / z-index âm).
+        Khi chọn bài: đổi src embed theo videoId + mute=1; sau đó ytSendPlay gửi unMute/play.
       */}
       <div
         style={{
           position: 'fixed',
           bottom: 0,
           right: 0,
-          width: 50,
-          height: 50,
-          opacity: 0.01,
+          width: 320,
+          height: 180,
+          opacity: 0,
           pointerEvents: 'none',
-          zIndex: -1,
+          overflow: 'hidden',
+          zIndex: 1,
         }}
         aria-hidden="true"
       >
         <iframe
+          key={embedVideoId}
           ref={iframeRef}
-          width="1"
-          height="1"
+          width="320"
+          height="180"
           src={iframeSrc}
-          allow="autoplay; encrypted-media; fullscreen"
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
           allowFullScreen={false}
-          style={{ border: 'none', position: 'absolute', width: 1, height: 1, opacity: 0.01 }}
+          style={{ border: 'none', width: 320, height: 180, display: 'block' }}
           title="yt-player"
           onLoad={() => {
-            if (ytListeningRef.current) return;
+            const gen = ++iframeLoadGenRef.current;
             window.setTimeout(() => {
-              if (!ytListeningRef.current) ytListeningRef.current = true;
+              if (gen !== iframeLoadGenRef.current) return;
+              ytListeningRef.current = true;
               const pending = pendingPlayRef.current;
               if (pending) {
                 pendingPlayRef.current = null;
-                ytSendPlay(pending);
+                ytSendPlayRef.current(pending);
               }
-            }, 800);
+            }, 400);
           }}
         />
       </div>
