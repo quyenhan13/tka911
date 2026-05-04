@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'VTeen',
   webDir: 'dist',
   server: {
-    hostname: 'vteen.shop',
+    hostname: 'app.vteen.shop',
     iosScheme: 'https',
     cleartext: false
   },
