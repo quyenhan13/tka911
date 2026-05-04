@@ -36,7 +36,6 @@ function App() {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const playlistRef = useRef<Video[]>([]);
-  const [playerReady, setPlayerReady] = useState(false);
 
 
   const playerRef = useRef<any>(null);
@@ -107,7 +106,6 @@ function App() {
           },
           events: {
             onReady: (e: any) => {
-              setPlayerReady(true);
               e.target.unMute();
               e.target.setVolume(100);
               if (pendingVideoRef.current) {
