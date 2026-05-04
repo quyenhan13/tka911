@@ -57,7 +57,10 @@ const TubeScreen: React.FC<TubeProps> = ({ currentVideo, playVideo }) => {
   return (
     <div className="flex flex-col h-full relative overflow-hidden bg-transparent">
       {/* Header */}
-      <header className="sticky top-0 z-50 px-6 py-4 bg-background/20 backdrop-blur-2xl border-b border-white/10">
+      <header 
+        className="sticky top-0 z-50 px-6 bg-[#05070a]/30 backdrop-blur-3xl border-b border-white/10"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)', paddingBottom: '1rem' }}
+      >
         <form onSubmit={handleSearch} className="relative group">
           <input 
             type="text" 

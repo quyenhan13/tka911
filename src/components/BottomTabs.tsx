@@ -32,10 +32,10 @@ const BottomTabs: React.FC<BottomTabsProps> = ({ activeTab, onTabChange }) => {
 
   return (
     <div 
-      className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-3 pt-1 bg-linear-to-t from-black/20 to-transparent pointer-events-none"
-      style={{ bottom: 0 }}
+      className="fixed bottom-0 left-0 right-0 z-50 px-4 pt-1 bg-linear-to-t from-[#05070a] to-transparent pointer-events-none"
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.5rem)' }}
     >
-      <nav className="glass flex items-center justify-around h-11 rounded-2xl px-3 shadow-2xl pointer-events-auto">
+      <nav className="glass flex items-center justify-around h-14 rounded-2xl px-3 shadow-2xl pointer-events-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}

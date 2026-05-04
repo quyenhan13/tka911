@@ -216,9 +216,9 @@ function App() {
                 initial={{ y: 100 }} 
                 animate={{ y: 0 }} 
                 exit={{ y: 100 }}
-                className="fixed bottom-[4.5rem] left-0 right-0 z-50 px-2"
+                className="fixed bottom-[5.5rem] left-0 right-0 z-50 px-3"
               >
-                <div className="bg-[#0f141f]/95 backdrop-blur-2xl border-t border-white/5 shadow-2xl overflow-hidden rounded-t-2xl">
+                <div className="bg-[#0f141f]/95 backdrop-blur-3xl border border-white/5 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] overflow-hidden rounded-2xl">
                   {/* Progress Line at Top */}
                   <div className="h-0.5 w-full bg-white/5 relative">
                     <div 
