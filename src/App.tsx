@@ -77,14 +77,23 @@ function App() {
         height: '1',
         width: '1',
         playerVars: { 
-          'autoplay': 1, 
+          'autoplay': 0, 
           'controls': 0, 
           'playsinline': 1,
+          'mute': 0,
           'origin': window.location.origin
         },
         events: {
+          'onReady': (event: any) => {
+            // iOS: phải unmute + set volume ngay khi player sẵn sàng
+            event.target.unMute();
+            event.target.setVolume(100);
+          },
           'onStateChange': (event: any) => {
             if (event.data === (window as any).YT.PlayerState.PLAYING) {
+              // iOS: đảm bảo unmute sau mỗi lần play
+              playerRef.current?.unMute?.();
+              playerRef.current?.setVolume?.(100);
               setIsPlaying(true);
               setDuration(playerRef.current.getDuration());
               startProgressLoop();
@@ -146,10 +155,23 @@ function App() {
     setCurrentTime(0);
     
     if (playerRef.current?.loadVideoById) {
+      // iOS fix: unMute + setVolume phải được gọi trong cùng user gesture
+      playerRef.current.unMute?.();
+      playerRef.current.setVolume?.(100);
       playerRef.current.loadVideoById(video.id);
     } else {
-      const iframe = document.getElementById('yt-player-direct') as HTMLIFrameElement;
-      if (iframe) iframe.src = `https://www.youtube.com/embed/${video.id}?autoplay=1`;
+      // Fallback: khởi tạo player nếu chưa sẵn sàng, rồi thử lại
+      const YT = (window as any).YT;
+      if (YT && YT.Player) {
+        initPlayer();
+        setTimeout(() => {
+          if (playerRef.current?.loadVideoById) {
+            playerRef.current.unMute?.();
+            playerRef.current.setVolume?.(100);
+            playerRef.current.loadVideoById(video.id);
+          }
+        }, 800);
+      }
     }
   };
 
@@ -158,6 +180,9 @@ function App() {
     if (isPlaying) {
       playerRef.current.pauseVideo();
     } else {
+      // iOS fix: luôn unMute trong user gesture trước khi play
+      playerRef.current.unMute?.();
+      playerRef.current.setVolume?.(100);
       playerRef.current.playVideo();
     }
   };
@@ -329,10 +354,13 @@ function App() {
         </>
       )}
 
-      {/* YouTube Player Containers (Stable Wrapper) */}
-      <div className="fixed bottom-0 right-0 w-px h-px opacity-0 pointer-events-none z-[-1]">
-        <div id="yt-player-container"></div>
-        <iframe id="yt-player-direct" allow="autoplay"></iframe>
+      {/* YouTube Player Containers - iOS cần player không bị ẩn hoàn toàn */}
+      <div 
+        className="fixed pointer-events-none z-[-1]"
+        style={{ bottom: 0, right: 0, width: 1, height: 1, overflow: 'hidden' }}
+        aria-hidden="true"
+      >
+        <div id="yt-player-container" style={{ width: 1, height: 1 }}></div>
       </div>
     </div>
   )
