@@ -46,6 +46,7 @@ function App() {
 
   const bootVideoId = 'jfKfPfyJRdk';
   const embedVideoId = currentVideo?.id ?? bootVideoId;
+  
   const iframeSrc = useMemo(() => {
     const id = currentVideo?.id ?? bootVideoId;
     // Dùng Proxy Player trên server để lách luật YouTube Error 153.
@@ -101,10 +102,9 @@ function App() {
           }
         }
         
-        // Bắt lỗi từ YouTube iframe (lỗi 150/101 do chặn nhúng, lỗi bản quyền, v.v...)
+        // Bắt lỗi từ YouTube iframe
         if (data.event === 'onError') {
           console.warn('YouTube Player Error:', data.info);
-          // Tự động bỏ qua bài bị lỗi
           playNextRef.current?.();
         }
         if (data.event === 'infoDelivery' && data.info) {
@@ -145,7 +145,6 @@ function App() {
         sendCommand('getCurrentTime');
       };
 
-      // iOS: autoplay thường cần mute=1 trên URL rồi unMute; gửi lại lệnh nhiều nhịp.
       perform();
       [120, 380, 850, 1600, 2600].forEach((ms) => {
         const timer = window.setTimeout(perform, ms);
@@ -312,6 +311,7 @@ function App() {
             </motion.main>
           </AnimatePresence>
 
+          {/* Mini Player Bar */}
           <AnimatePresence>
             {currentVideo && !watchingSlug && (
               <motion.div
@@ -320,7 +320,7 @@ function App() {
                 exit={{ y: 100, opacity: 0 }}
                 className="fixed bottom-[5.8rem] left-0 right-0 z-[60] px-3 pointer-events-none"
               >
-                <div className="bg-[#0f141f] border border-white/5 shadow-[0_-15px_50px_rgba(0,0,0,0.6)] overflow-hidden rounded-2xl pointer-events-auto relative">
+                <div className="bg-[#0f141f]/80 backdrop-blur-xl border border-white/5 shadow-[0_-15px_50px_rgba(0,0,0,0.6)] overflow-hidden rounded-2xl pointer-events-auto relative">
                   <div
                     className="h-1 w-full bg-white/10 relative cursor-pointer group"
                     onClick={(e) => {
@@ -332,10 +332,6 @@ function App() {
                     <div
                       className="absolute h-full bg-primary shadow-[0_0_8px_#06b6d4] transition-all"
                       style={{ width: `${progress}%` }}
-                    />
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ left: `calc(${progress}% - 6px)` }}
                     />
                   </div>
 
@@ -362,10 +358,6 @@ function App() {
                       </div>
                     </button>
 
-                    <span className="text-[9px] text-white/40 font-mono flex-shrink-0">
-                      {fmt(currentTime)}/{fmt(duration)}
-                    </span>
-
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <button onClick={playPrev} className="text-white/40 active:text-white transition-colors p-1">
                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
@@ -390,130 +382,146 @@ function App() {
             )}
           </AnimatePresence>
 
-          {!watchingSlug && (
-            <div
-              className={
-                tubeExpanded && currentVideo
-                  ? 'pointer-events-auto fixed inset-0 z-[900] flex flex-col bg-[#050510]/95 backdrop-blur-xl pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]'
-                  : 'pointer-events-none fixed bottom-0 right-0 z-[1] h-[180px] w-[320px] overflow-hidden opacity-0'
-              }
-            >
-              {tubeExpanded && currentVideo && (
-                <div className="flex shrink-0 justify-end px-4 pt-2">
+          {/* Full Screen Player Overlay (Music App Feel) */}
+          <AnimatePresence>
+            {tubeExpanded && currentVideo && (
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed inset-0 z-[900] bg-[#050510]/95 backdrop-blur-2xl flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+              >
+                {/* Header */}
+                <div className="flex shrink-0 justify-between items-center px-6 pt-4">
                   <button
-                    type="button"
-                    aria-label="Đóng trình phát"
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white active:bg-white/20"
                     onClick={() => setTubeExpanded(false)}
+                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 active:bg-white/10"
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
-                      <path d="M18 6L6 18M6 6l12 12" />
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
+                      <path d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
+                  <span className="text-[10px] font-black tracking-widest text-primary/40 uppercase">VTEEN MUSIC</span>
+                  <div className="w-10" />
                 </div>
-              )}
-              <div className={tubeExpanded && currentVideo ? 'shrink-0 px-4' : 'h-full w-full'}>
-                <div
-                  className={
-                    tubeExpanded && currentVideo
-                      ? 'relative aspect-video max-h-[38vh] w-full overflow-hidden rounded-2xl border border-white/10 bg-black'
-                      : 'h-full w-full'
-                  }
-                >
-                  <iframe
-                    key={embedVideoId}
-                    ref={iframeRef}
-                    src={iframeSrc}
-                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                    allowFullScreen
-                    title="yt-player"
-                    className={
-                      tubeExpanded && currentVideo
-                        ? 'absolute inset-0 h-full w-full border-0'
-                        : 'block h-full w-full border-0'
-                    }
-                    onLoad={() => {
-                      const gen = ++iframeLoadGenRef.current;
-                      window.setTimeout(() => {
-                        if (gen !== iframeLoadGenRef.current) return;
-                        ytListeningRef.current = true;
-                        const pending = pendingPlayRef.current;
-                        if (pending) {
-                          pendingPlayRef.current = null;
-                          ytSendPlayRef.current(pending);
-                        }
-                      }, 400);
-                    }}
-                  />
-                </div>
-                {tubeExpanded && currentVideo && (
-                  <div className="mt-2 space-y-1 text-center">
-                    <p className="text-[11px] text-white/50">
-                      iOS: chạm nút phát (▶) trên video YouTube nếu chưa có tiếng.
-                    </p>
-                    <a
-                      href={`https://www.youtube.com/watch?v=${encodeURIComponent(currentVideo.id)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block text-xs text-primary underline"
+
+                {/* Main Content: Rotating CD */}
+                <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 overflow-hidden">
+                  <div className="relative">
+                    <motion.div
+                      animate={{ rotate: isPlaying ? 360 : 0 }}
+                      transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+                      className="relative w-[75vw] aspect-square max-w-sm rounded-full shadow-[0_0_80px_rgba(0,0,0,0.8)] border-8 border-[#111]"
                     >
-                      Mở trong YouTube
-                    </a>
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary/10 to-transparent blur-3xl" />
+                      <img
+                        src={currentVideo.thumbnail}
+                        className="w-full h-full rounded-full object-cover shadow-2xl"
+                        alt=""
+                      />
+                      {/* Inner CD Ring */}
+                      <div className="absolute inset-0 rounded-full border-[20px] border-black/10 pointer-events-none" />
+                      {/* Center Hole */}
+                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#050510] border-4 border-white/10 shadow-inner" />
+                    </motion.div>
+                    
+                    {/* Visualizer Pulsing Effect */}
+                    {isPlaying && (
+                      <motion.div
+                        animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0, 0.3] }}
+                        transition={{ repeat: Infinity, duration: 3 }}
+                        className="absolute inset-0 rounded-full border-2 border-primary/20 pointer-events-none"
+                      />
+                    )}
                   </div>
-                )}
-              </div>
-              {tubeExpanded && currentVideo && (
-                <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-                  <h2 className="line-clamp-2 text-center text-lg font-bold leading-snug text-white">{currentVideo.title}</h2>
-                  <p className="mt-2 text-center text-sm text-primary">{currentVideo.channelTitle}</p>
-                  <div
-                    className="relative mb-2 mt-6 h-1.5 w-full cursor-pointer rounded-full bg-white/10"
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const ratio = (e.clientX - rect.left) / rect.width;
-                      handleSeek(ratio * (duration || 0));
-                    }}
-                  >
+
+                  <div className="mt-12 text-center w-full max-w-sm">
+                    <h2 className="text-xl font-bold text-white line-clamp-2 leading-tight">{currentVideo.title}</h2>
+                    <p className="text-primary mt-2 font-medium tracking-wide">{currentVideo.channelTitle}</p>
+                  </div>
+                </div>
+
+                {/* Controls Area */}
+                <div className="px-8 pb-12 w-full max-w-lg mx-auto">
+                  {/* Seekbar */}
+                  <div className="space-y-3">
                     <div
-                      className="absolute h-full rounded-full bg-primary shadow-[0_0_12px_#06b6d4]"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <div className="mb-8 flex justify-between font-mono text-[11px] text-white/40">
-                    <span>{fmt(currentTime)}</span>
-                    <span>{fmt(duration)}</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-10">
-                    <button type="button" onClick={playPrev} className="p-2 text-white/50 active:text-white">
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-8 w-8">
-                        <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={togglePlay}
-                      className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black shadow-xl active:scale-95"
+                      className="h-1.5 w-full bg-white/10 rounded-full relative cursor-pointer group"
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const ratio = (e.clientX - rect.left) / rect.width;
+                        handleSeek(ratio * (duration || 0));
+                      }}
                     >
-                      {isPlaying ? (
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7">
-                          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="ml-1 h-7 w-7">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      )}
+                      <div
+                        className="absolute h-full bg-primary rounded-full shadow-[0_0_15px_#06b6d4]"
+                        style={{ width: `${progress}%` }}
+                      />
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg"
+                        style={{ left: `calc(${progress}% - 8px)` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[11px] font-mono text-white/30 tracking-tighter">
+                      <span>{fmt(currentTime)}</span>
+                      <span>{fmt(duration)}</span>
+                    </div>
+                  </div>
+
+                  {/* Playback Buttons */}
+                  <div className="flex items-center justify-between mt-8">
+                    <button className="text-white/20 active:text-white transition-colors">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M7 7h2v10H7zm3 5 8 5V7z"/></svg>
                     </button>
-                    <button type="button" onClick={playNext} className="p-2 text-white/50 active:text-white">
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-8 w-8">
-                        <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
-                      </svg>
+                    <div className="flex items-center gap-8">
+                      <button onClick={playPrev} className="text-white/60 active:text-white active:scale-90 transition-all">
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+                      </button>
+                      <button
+                        onClick={togglePlay}
+                        className="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all"
+                      >
+                        {isPlaying ? (
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 ml-1"><path d="M8 5v14l11-7z"/></svg>
+                        )}
+                      </button>
+                      <button onClick={playNext} className="text-white/60 active:text-white active:scale-90 transition-all">
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                      </button>
+                    </div>
+                    <button className="text-white/20 active:text-white transition-colors">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M7 7h10v2H7zm0 4h10v2H7zm0 4h10v2H7z"/></svg>
                     </button>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
+
+                {/* Hidden YouTube iframe */}
+                <iframe
+                  key={embedVideoId}
+                  ref={iframeRef}
+                  src={iframeSrc}
+                  allow="autoplay; encrypted-media; fullscreen"
+                  title="yt-player"
+                  className="fixed bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none"
+                  onLoad={() => {
+                    const gen = ++iframeLoadGenRef.current;
+                    window.setTimeout(() => {
+                      if (gen !== iframeLoadGenRef.current) return;
+                      ytListeningRef.current = true;
+                      const pending = pendingPlayRef.current;
+                      if (pending) {
+                        pendingPlayRef.current = null;
+                        ytSendPlayRef.current(pending);
+                      }
+                    }, 400);
+                  }}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AnimatePresence>
             {watchingSlug && (
