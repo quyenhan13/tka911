@@ -35,7 +35,7 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const [playlist, setPlaylist] = useState<Video[]>([]);
+  const playlistRef = useRef<Video[]>([]);
   const [playerReady, setPlayerReady] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -103,7 +103,7 @@ function App() {
   }, []);
 
   // Ref để tránh stale closure trong playNext
-  const playNextRef = useRef<() => void>();
+  const playNextRef = useRef<(() => void) | undefined>(undefined);
 
   const sendCommand = (func: string, args?: any[]) => {
     try {
@@ -203,7 +203,7 @@ function App() {
   }, [currentVideo]);
 
   const playVideo = useCallback((video: Video, list?: Video[]) => {
-    if (list) setPlaylist(list);
+    if (list) playlistRef.current = list;
     setCurrentVideo(video);
     setCurrentTime(0);
     setDuration(0);
@@ -242,35 +242,29 @@ function App() {
   }, [isPlaying]);
 
   const playNext = useCallback(() => {
-    setPlaylist(pl => {
-      setCurrentVideo(cv => {
-        if (!cv || pl.length === 0) return cv;
-        const idx = pl.findIndex(v => v.id === cv.id);
-        const next = pl[(idx + 1) % pl.length];
-        setTimeout(() => playVideo(next, pl), 0);
-        return cv;
-      });
-      return pl;
+    const pl = playlistRef.current;
+    setCurrentVideo(cv => {
+      if (!cv || pl.length === 0) return cv;
+      const idx = pl.findIndex(v => v.id === cv.id);
+      const next = pl[(idx + 1) % pl.length];
+      setTimeout(() => playVideo(next), 0);
+      return cv;
     });
   }, [playVideo]);
 
   const playPrev = useCallback(() => {
-    setPlaylist(pl => {
-      setCurrentVideo(cv => {
-        if (!cv || pl.length === 0) return cv;
-        const idx = pl.findIndex(v => v.id === cv.id);
-        const prev = pl[(idx - 1 + pl.length) % pl.length];
-        setTimeout(() => playVideo(prev, pl), 0);
-        return cv;
-      });
-      return pl;
+    const pl = playlistRef.current;
+    setCurrentVideo(cv => {
+      if (!cv || pl.length === 0) return cv;
+      const idx = pl.findIndex(v => v.id === cv.id);
+      const prev = pl[(idx - 1 + pl.length) % pl.length];
+      setTimeout(() => playVideo(prev), 0);
+      return cv;
     });
   }, [playVideo]);
 
   // Refs để dùng trong closures
-  const playNextRef2 = useRef(playNext);
-  const playPrevRef = useRef(playPrev);
-  useEffect(() => { playNextRef2.current = playNext; }, [playNext]);
+  const playPrevRef = useRef<(() => void) | undefined>(undefined);
   useEffect(() => { playPrevRef.current = playPrev; }, [playPrev]);
   useEffect(() => { playNextRef.current = playNext; }, [playNext]);
 
