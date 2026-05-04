@@ -110,6 +110,35 @@ function App() {
     }, 1000);
   };
 
+  // Background Audio & Lock Screen Controls
+  useEffect(() => {
+    if ('mediaSession' in navigator && currentVideo) {
+      navigator.mediaSession.metadata = new window.MediaMetadata({
+        title: currentVideo.title,
+        artist: currentVideo.channelTitle,
+        artwork: [
+          { src: currentVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }
+        ]
+      });
+
+      navigator.mediaSession.setActionHandler('play', () => {
+        setIsPlaying(true);
+        playerRef.current?.playVideo();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        setIsPlaying(false);
+        playerRef.current?.pauseVideo();
+      });
+      navigator.mediaSession.setActionHandler('previoustrack', playPrev);
+      navigator.mediaSession.setActionHandler('nexttrack', playNext);
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined) {
+          handleSeek(details.seekTime);
+        }
+      });
+    }
+  }, [currentVideo, isPlaying]);
+
   const playVideo = (video: Video, list?: Video[]) => {
     if (list) setPlaylist(list);
     setCurrentVideo(video);
