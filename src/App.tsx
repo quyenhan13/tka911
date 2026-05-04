@@ -46,6 +46,9 @@ function App() {
 
   const bootVideoId = 'jfKfPfyJRdk';
   const embedVideoId = currentVideo?.id ?? bootVideoId;
+  const iframeSrc = useMemo(() => {
+    const id = currentVideo?.id ?? bootVideoId;
+    const ap = currentVideo ? 1 : 0;
     // Thêm widget_referrer và origin=https://vteen.shop để đồng bộ với Capacitor config mới.
     // Điều này đánh lừa YouTube rằng app đang chạy trực tiếp trên tên miền vteen.shop.
     return `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=1&autoplay=${ap}&mute=1&modestbranding=1&rel=0&widget_referrer=https%3A%2F%2Fvteen.shop&origin=https%3A%2F%2Fvteen.shop`;
