@@ -103,6 +103,13 @@ function App() {
             playNextRef.current?.();
           }
         }
+        
+        // Bắt lỗi từ YouTube iframe (lỗi 150/101 do chặn nhúng, lỗi bản quyền, v.v...)
+        if (data.event === 'onError') {
+          console.warn('YouTube Player Error:', data.info);
+          // Tự động bỏ qua bài bị lỗi
+          playNextRef.current?.();
+        }
         if (data.event === 'infoDelivery' && data.info) {
           const ct = data.info.currentTime;
           if (typeof ct === 'number' && Number.isFinite(ct) && ct >= 0) {
