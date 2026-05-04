@@ -37,6 +37,13 @@ function App() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const progressInterval = useRef<any>(null);
   const playlistRef = useRef<Video[]>([]);
+  const ytListeningRef = useRef(false);
+  const pendingPlayRef = useRef<{ video: Video; list?: Video[] } | null>(null);
+  const embedOrigin =
+    typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+  const iframeSrc =
+    `https://www.youtube.com/embed/jfKfPfyJRdk?enablejsapi=1&playsinline=1&controls=0&autoplay=0&mute=0` +
+    (embedOrigin ? `&origin=${encodeURIComponent(embedOrigin)}` : '');
 
   // Send postMessage to YouTube iframe
   const sendCommand = useCallback((func: string, args?: any[]) => {
@@ -65,6 +72,15 @@ function App() {
         // YT sends JSON string or object
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
         if (!data || !data.event) return;
+
+        if (data.event === 'listening') {
+          ytListeningRef.current = true;
+          const pending = pendingPlayRef.current;
+          if (pending) {
+            pendingPlayRef.current = null;
+            flushPlay(pending.video, pending.list);
+          }
+        }
 
         if (data.event === 'onStateChange') {
           const state = data.info; // 1=PLAYING, 2=PAUSED, 0=ENDED
@@ -99,6 +115,28 @@ function App() {
 
   const playNextRef = useRef<(() => void) | undefined>(undefined);
 
+  const flushPlay = useCallback(
+    (video: Video, list?: Video[]) => {
+      sendCommand('unMute');
+      sendCommand('setVolume', [100]);
+      sendCommand('loadVideoById', [video.id]);
+      sendCommand('playVideo');
+      if (list) playlistRef.current = list;
+      setCurrentVideo(video);
+      setCurrentTime(0);
+      setDuration(0);
+      setIsPlaying(true);
+      const retry = () => {
+        sendCommand('unMute');
+        sendCommand('playVideo');
+      };
+      requestAnimationFrame(retry);
+      setTimeout(retry, 150);
+      setTimeout(retry, 600);
+    },
+    [sendCommand]
+  );
+
   const startProgressLoop = () => {
     stopProgressLoop();
     progressInterval.current = setInterval(() => {
@@ -114,20 +152,16 @@ function App() {
     }
   };
 
-  const playVideo = useCallback((video: Video, list?: Video[]) => {
-    // 1. Gửi lệnh tới iframe ngay lập tức
-    sendCommand('unMute');
-    sendCommand('setVolume', [100]);
-    sendCommand('loadVideoById', [video.id]);
-    sendCommand('playVideo');
-
-    // 2. Cập nhật UI
-    if (list) playlistRef.current = list;
-    setCurrentVideo(video);
-    setCurrentTime(0);
-    setDuration(0);
-    setIsPlaying(true);
-  }, [sendCommand]);
+  const playVideo = useCallback(
+    (video: Video, list?: Video[]) => {
+      if (!ytListeningRef.current) {
+        pendingPlayRef.current = { video, list };
+        return;
+      }
+      flushPlay(video, list);
+    },
+    [flushPlay]
+  );
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
@@ -342,11 +376,22 @@ function App() {
           ref={iframeRef}
           width="100%"
           height="100%"
-          src="https://www.youtube.com/embed/jfKfPfyJRdk?enablejsapi=1&playsinline=1&controls=0&autoplay=0&mute=0"
-          allow="autoplay; encrypted-media"
+          src={iframeSrc}
+          allow="autoplay; encrypted-media; fullscreen"
           allowFullScreen={false}
           style={{ border: 'none' }}
           title="yt-player"
+          onLoad={() => {
+            if (ytListeningRef.current) return;
+            window.setTimeout(() => {
+              if (!ytListeningRef.current) ytListeningRef.current = true;
+              const pending = pendingPlayRef.current;
+              if (pending) {
+                pendingPlayRef.current = null;
+                flushPlay(pending.video, pending.list);
+              }
+            }, 800);
+          }}
         />
       </div>
     </div>
