@@ -50,11 +50,10 @@ function App() {
   const iframeSrc = useMemo(() => {
     const id = currentVideo?.id ?? bootVideoId;
     const ap = currentVideo ? 1 : 0;
-    return (
-      `https://www.youtube-nocookie.com/embed/${id}?enablejsapi=1&playsinline=1&controls=1&autoplay=${ap}&mute=1&modestbranding=1&rel=0` +
-      (embedOrigin ? `&origin=${encodeURIComponent(embedOrigin)}` : '')
-    );
-  }, [currentVideo, embedOrigin]);
+    // Dùng www.youtube.com chuẩn thay vì nocookie để tránh lỗi 150/153 trên một số MV.
+    // KHÔNG NỐI thêm origin nếu chạy trong WebView (capacitor://) vì YouTube sẽ báo "Lỗi 153: Lỗi cấu hình"
+    return `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=1&autoplay=${ap}&mute=1&modestbranding=1&rel=0`;
+  }, [currentVideo]);
 
   // Send postMessage to YouTube iframe
   const sendCommand = useCallback((func: string, args?: any[]) => {
