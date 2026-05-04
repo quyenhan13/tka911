@@ -38,7 +38,7 @@ function App() {
   const progressInterval = useRef<any>(null);
   const playlistRef = useRef<Video[]>([]);
   const ytListeningRef = useRef(false);
-  const pendingPlayRef = useRef<{ video: Video; list?: Video[] } | null>(null);
+  const pendingPlayRef = useRef<Video | null>(null);
   const embedOrigin =
     typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
   const iframeSrc =
@@ -78,7 +78,7 @@ function App() {
           const pending = pendingPlayRef.current;
           if (pending) {
             pendingPlayRef.current = null;
-            flushPlay(pending.video, pending.list);
+            ytSendPlay(pending);
           }
         }
 
@@ -115,17 +115,12 @@ function App() {
 
   const playNextRef = useRef<(() => void) | undefined>(undefined);
 
-  const flushPlay = useCallback(
-    (video: Video, list?: Video[]) => {
+  const ytSendPlay = useCallback(
+    (video: Video) => {
       sendCommand('unMute');
       sendCommand('setVolume', [100]);
       sendCommand('loadVideoById', [video.id]);
       sendCommand('playVideo');
-      if (list) playlistRef.current = list;
-      setCurrentVideo(video);
-      setCurrentTime(0);
-      setDuration(0);
-      setIsPlaying(true);
       const retry = () => {
         sendCommand('unMute');
         sendCommand('playVideo');
@@ -154,13 +149,18 @@ function App() {
 
   const playVideo = useCallback(
     (video: Video, list?: Video[]) => {
+      if (list) playlistRef.current = list;
+      setCurrentVideo(video);
+      setCurrentTime(0);
+      setDuration(0);
+      setIsPlaying(true);
       if (!ytListeningRef.current) {
-        pendingPlayRef.current = { video, list };
+        pendingPlayRef.current = video;
         return;
       }
-      flushPlay(video, list);
+      ytSendPlay(video);
     },
-    [flushPlay]
+    [ytSendPlay]
   );
 
   const togglePlay = useCallback(() => {
@@ -388,7 +388,7 @@ function App() {
               const pending = pendingPlayRef.current;
               if (pending) {
                 pendingPlayRef.current = null;
-                flushPlay(pending.video, pending.list);
+                ytSendPlay(pending);
               }
             }, 800);
           }}
