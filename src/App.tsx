@@ -38,7 +38,7 @@ function App() {
   const playlistRef = useRef<Video[]>([]);
   const [playerReady, setPlayerReady] = useState(false);
 
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+
   const playerRef = useRef<any>(null);
   const progressInterval = useRef<any>(null);
   const pendingVideoRef = useRef<string | null>(null);
