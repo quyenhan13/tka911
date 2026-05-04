@@ -49,8 +49,9 @@ function App() {
   const iframeSrc = useMemo(() => {
     const id = currentVideo?.id ?? bootVideoId;
     const ap = currentVideo ? 1 : 0;
-    // Dùng URL chuẩn, bỏ qua origin để tránh xung đột với localhost của Capacitor.
-    return `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=1&autoplay=${ap}&mute=1&modestbranding=1&rel=0`;
+    // Dùng Proxy Player trên server để lách luật YouTube Error 153.
+    // Proxy này (yt_player.php) sẽ có Referrer là vteen.shop nên YouTube sẽ cho phép phát nhạc.
+    return `https://vteen.shop/yt_player.php?id=${id}`;
   }, [currentVideo]);
 
   // Send postMessage to YouTube iframe
