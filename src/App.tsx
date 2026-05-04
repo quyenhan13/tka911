@@ -51,7 +51,7 @@ function App() {
     const id = currentVideo?.id ?? bootVideoId;
     const ap = currentVideo ? 1 : 0;
     return (
-      `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=1&autoplay=${ap}&mute=1&modestbranding=1&rel=0` +
+      `https://www.youtube-nocookie.com/embed/${id}?enablejsapi=1&playsinline=1&controls=1&autoplay=${ap}&mute=1&modestbranding=1&rel=0` +
       (embedOrigin ? `&origin=${encodeURIComponent(embedOrigin)}` : '')
     );
   }, [currentVideo, embedOrigin]);
@@ -422,6 +422,7 @@ function App() {
                     src={iframeSrc}
                     allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
                     allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
                     title="yt-player"
                     className={
                       tubeExpanded && currentVideo
