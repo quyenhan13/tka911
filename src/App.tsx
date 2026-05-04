@@ -51,7 +51,7 @@ function App() {
     const id = currentVideo?.id ?? bootVideoId;
     const ap = currentVideo ? 1 : 0;
     return (
-      `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=0&autoplay=${ap}&mute=1&modestbranding=1&rel=0` +
+      `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=1&autoplay=${ap}&mute=1&modestbranding=1&rel=0` +
       (embedOrigin ? `&origin=${encodeURIComponent(embedOrigin)}` : '')
     );
   }, [currentVideo, embedOrigin]);
@@ -386,42 +386,84 @@ function App() {
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {tubeExpanded && currentVideo && !watchingSlug && (
-              <motion.div
-                key="tube-expanded"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[900] flex flex-col bg-[#050510]/95 backdrop-blur-xl"
-                style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-              >
-                <button
-                  type="button"
-                  aria-label="Đóng trình phát"
-                  className="absolute top-3 right-4 z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:bg-white/20"
-                  style={{ top: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
-                  onClick={() => setTubeExpanded(false)}
+          {!watchingSlug && (
+            <div
+              className={
+                tubeExpanded && currentVideo
+                  ? 'pointer-events-auto fixed inset-0 z-[900] flex flex-col bg-[#050510]/95 backdrop-blur-xl pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]'
+                  : 'pointer-events-none fixed bottom-0 right-0 z-[1] h-[180px] w-[320px] overflow-hidden opacity-0'
+              }
+            >
+              {tubeExpanded && currentVideo && (
+                <div className="flex shrink-0 justify-end px-4 pt-2">
+                  <button
+                    type="button"
+                    aria-label="Đóng trình phát"
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white active:bg-white/20"
+                    onClick={() => setTubeExpanded(false)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              <div className={tubeExpanded && currentVideo ? 'shrink-0 px-4' : 'h-full w-full'}>
+                <div
+                  className={
+                    tubeExpanded && currentVideo
+                      ? 'relative aspect-video max-h-[38vh] w-full overflow-hidden rounded-2xl border border-white/10 bg-black'
+                      : 'h-full w-full'
+                  }
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
-
-                <div className="flex-1 flex flex-col justify-center px-6 pt-14 pb-8 min-h-0">
-                  <div className="w-full max-w-sm mx-auto aspect-square max-h-[45vh] rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] border border-white/10 mb-8">
-                    <img
-                      src={currentVideo.thumbnail}
-                      alt=""
-                      className={`w-full h-full object-cover ${isPlaying ? 'scale-[1.02]' : ''}`}
-                    />
+                  <iframe
+                    key={embedVideoId}
+                    ref={iframeRef}
+                    src={iframeSrc}
+                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                    allowFullScreen
+                    title="yt-player"
+                    className={
+                      tubeExpanded && currentVideo
+                        ? 'absolute inset-0 h-full w-full border-0'
+                        : 'block h-full w-full border-0'
+                    }
+                    onLoad={() => {
+                      const gen = ++iframeLoadGenRef.current;
+                      window.setTimeout(() => {
+                        if (gen !== iframeLoadGenRef.current) return;
+                        ytListeningRef.current = true;
+                        const pending = pendingPlayRef.current;
+                        if (pending) {
+                          pendingPlayRef.current = null;
+                          ytSendPlayRef.current(pending);
+                        }
+                      }, 400);
+                    }}
+                  />
+                </div>
+                {tubeExpanded && currentVideo && (
+                  <div className="mt-2 space-y-1 text-center">
+                    <p className="text-[11px] text-white/50">
+                      iOS: chạm nút phát (▶) trên video YouTube nếu chưa có tiếng.
+                    </p>
+                    <a
+                      href={`https://www.youtube.com/watch?v=${encodeURIComponent(currentVideo.id)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-xs text-primary underline"
+                    >
+                      Mở trong YouTube
+                    </a>
                   </div>
-                  <div className="text-center mb-6 px-2">
-                    <h2 className="text-lg font-bold text-white leading-snug line-clamp-2">{currentVideo.title}</h2>
-                    <p className="text-sm text-primary mt-2">{currentVideo.channelTitle}</p>
-                  </div>
+                )}
+              </div>
+              {tubeExpanded && currentVideo && (
+                <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+                  <h2 className="line-clamp-2 text-center text-lg font-bold leading-snug text-white">{currentVideo.title}</h2>
+                  <p className="mt-2 text-center text-sm text-primary">{currentVideo.channelTitle}</p>
                   <div
-                    className="h-1.5 w-full bg-white/10 rounded-full relative cursor-pointer mb-2"
+                    className="relative mb-2 mt-6 h-1.5 w-full cursor-pointer rounded-full bg-white/10"
                     onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect();
                       const ratio = (e.clientX - rect.left) / rect.width;
@@ -429,37 +471,45 @@ function App() {
                     }}
                   >
                     <div
-                      className="absolute h-full bg-primary rounded-full shadow-[0_0_12px_#06b6d4]"
+                      className="absolute h-full rounded-full bg-primary shadow-[0_0_12px_#06b6d4]"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-[11px] text-white/40 font-mono mb-8">
+                  <div className="mb-8 flex justify-between font-mono text-[11px] text-white/40">
                     <span>{fmt(currentTime)}</span>
                     <span>{fmt(duration)}</span>
                   </div>
                   <div className="flex items-center justify-center gap-10">
-                    <button type="button" onClick={playPrev} className="text-white/50 active:text-white p-2">
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+                    <button type="button" onClick={playPrev} className="p-2 text-white/50 active:text-white">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-8 w-8">
+                        <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z" />
+                      </svg>
                     </button>
                     <button
                       type="button"
                       onClick={togglePlay}
-                      className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center active:scale-95 shadow-xl"
+                      className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black shadow-xl active:scale-95"
                     >
                       {isPlaying ? (
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7">
+                          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        </svg>
                       ) : (
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7 ml-1"><path d="M8 5v14l11-7z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="ml-1 h-7 w-7">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
                       )}
                     </button>
-                    <button type="button" onClick={playNext} className="text-white/50 active:text-white p-2">
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                    <button type="button" onClick={playNext} className="p-2 text-white/50 active:text-white">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-8 w-8">
+                        <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                      </svg>
                     </button>
                   </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+            </div>
+          )}
 
           <AnimatePresence>
             {watchingSlug && (
@@ -478,49 +528,6 @@ function App() {
           {!watchingSlug && <BottomTabs activeTab={activeTab} onTabChange={setActiveTab} />}
         </>
       )}
-
-      {/*
-        Iframe thật kích thước tối thiểu (WKWebView hay không decode video nếu 1×1 / z-index âm).
-        Khi chọn bài: đổi src embed theo videoId + mute=1; sau đó ytSendPlay gửi unMute/play.
-      */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          right: 0,
-          width: 320,
-          height: 180,
-          opacity: 0,
-          pointerEvents: 'none',
-          overflow: 'hidden',
-          zIndex: 1,
-        }}
-        aria-hidden="true"
-      >
-        <iframe
-          key={embedVideoId}
-          ref={iframeRef}
-          width="320"
-          height="180"
-          src={iframeSrc}
-          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-          allowFullScreen={false}
-          style={{ border: 'none', width: 320, height: 180, display: 'block' }}
-          title="yt-player"
-          onLoad={() => {
-            const gen = ++iframeLoadGenRef.current;
-            window.setTimeout(() => {
-              if (gen !== iframeLoadGenRef.current) return;
-              ytListeningRef.current = true;
-              const pending = pendingPlayRef.current;
-              if (pending) {
-                pendingPlayRef.current = null;
-                ytSendPlayRef.current(pending);
-              }
-            }, 400);
-          }}
-        />
-      </div>
     </div>
   );
 }
