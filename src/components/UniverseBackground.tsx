@@ -6,7 +6,7 @@ const UniverseBackground: React.FC = () => {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const colors = ['#00f2ff', '#39ffba', '#ffffff', '#7000ff', '#ff00d4', '#fff700'];
+    const colors = ['#00f2ff', '#39ffba', '#ffffff', '#7000ff', '#ff00d4'];
     const stream = containerRef.current;
     let emitterTimer: any = null;
 
@@ -15,7 +15,7 @@ const UniverseBackground: React.FC = () => {
       const particle = document.createElement('div');
       particle.className = 'stream-particle';
 
-      const size = Math.random() * 2.5 + 1;
+      const size = Math.random() * 3 + 2;
       particle.style.width = size + 'px';
       particle.style.height = size + 'px';
       particle.style.left = Math.random() * window.innerWidth + 'px';
@@ -26,10 +26,10 @@ const UniverseBackground: React.FC = () => {
       particle.style.top = (spawnY + Math.random() * 18 - 9) + 'px';
       particle.style.color = colors[Math.floor(Math.random() * colors.length)];
       
-      const duration = (Math.random() * 8 + 12).toFixed(2) + 's';
-      const drift = (Math.random() * 120 - 60).toFixed(2) + 'px';
-      const opacity = (Math.random() * 0.25 + 0.3).toFixed(2);
-      const travelDistance = (-travel - Math.random() * 100).toFixed(2) + 'px';
+      const duration = (Math.random() * 6 + 8).toFixed(2) + 's';
+      const drift = (Math.random() * 80 - 40).toFixed(2) + 'px';
+      const opacity = (Math.random() * 0.18 + 0.30).toFixed(2);
+      const travelDistance = (-travel - Math.random() * 80).toFixed(2) + 'px';
 
       particle.style.setProperty('--duration', duration);
       particle.style.setProperty('--drift', drift);
@@ -50,7 +50,7 @@ const UniverseBackground: React.FC = () => {
       if (emitterTimer !== null) return;
       emitterTimer = setInterval(() => {
         if (!document.hidden) spawnParticle();
-      }, window.innerWidth < 768 ? 150 : 100);
+      }, window.innerWidth < 768 ? 180 : 110);
     };
 
     const stopEmitter = () => {
@@ -59,8 +59,8 @@ const UniverseBackground: React.FC = () => {
       emitterTimer = null;
     };
 
-    for (let i = 0; i < 30; i++) {
-      setTimeout(spawnParticle, i * 100);
+    for (let i = 0; i < 14; i++) {
+      setTimeout(spawnParticle, i * 90);
     }
 
     startEmitter();
@@ -79,102 +79,46 @@ const UniverseBackground: React.FC = () => {
     };
   }, []);
 
-  // Helper to generate a massive field of stars via box-shadow
-  const generateStars = (count: number) => {
-    let stars = '';
-    for (let i = 0; i < count; i++) {
-      const x = Math.floor(Math.random() * 2000);
-      const y = Math.floor(Math.random() * 2000);
-      stars += `${x}px ${y}px #fff${i % 5 === 0 ? '' : ', '}`;
-    }
-    return stars.trim().replace(/,$/, '');
-  };
-
   return (
-    <div className="universe-stream-page fixed inset-0 z-[-1] overflow-hidden pointer-events-none bg-[#010206]">
-      {/* Intense Multi-Layer Nebula */}
-      <div className="nebula-layer n-1" />
-      <div className="nebula-layer n-2" />
-      <div className="nebula-layer n-3" />
-      
-      {/* Massive Star Fields */}
-      <div className="star-field s-1" />
-      <div className="star-field s-2" />
-      <div className="star-field s-3" />
-      
+    <div className="universe-stream-page fixed inset-0 z-[-1] overflow-hidden pointer-events-none bg-[#05070a]">
+      <div className="nebula-main" />
+      <div className="nebula-secondary" />
       <div id="universe-stream" ref={containerRef} />
 
       <style>{`
         .universe-stream-page {
-          background: #010206;
+          background:
+            radial-gradient(circle at 18% 20%, rgba(0, 242, 255, 0.08), transparent 28%),
+            radial-gradient(circle at 82% 12%, rgba(112, 0, 255, 0.10), transparent 32%),
+            radial-gradient(circle at 75% 78%, rgba(255, 0, 200, 0.06), transparent 26%),
+            #05070a !important;
         }
 
-        .nebula-layer {
+        .nebula-main {
+          content: "";
           position: fixed;
-          inset: -50%;
-          filter: blur(140px);
-          opacity: 0.6;
-          mix-blend-mode: screen;
+          inset: 0;
           pointer-events: none;
           z-index: -2;
+          background:
+            radial-gradient(circle at 20% 30%, rgba(0, 242, 255, 0.10), transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(112, 0, 255, 0.12), transparent 40%);
+          animation: universeNebulaPulse 15s ease-in-out infinite alternate;
         }
 
-        .n-1 {
-          background: radial-gradient(circle at 20% 30%, rgba(0, 242, 255, 0.15), transparent 40%);
-          animation: nebulaDrift 50s ease-in-out infinite alternate;
-        }
-
-        .n-2 {
-          background: radial-gradient(circle at 80% 70%, rgba(112, 0, 255, 0.18), transparent 45%);
-          animation: nebulaDrift 45s ease-in-out infinite alternate-reverse;
-        }
-
-        .n-3 {
-          background: radial-gradient(circle at 50% 50%, rgba(255, 0, 200, 0.1), transparent 35%);
-          animation: nebulaDrift 60s ease-in-out infinite alternate;
-        }
-
-        @keyframes nebulaDrift {
-          from { transform: translate(-8%, -8%) scale(1); }
-          to { transform: translate(8%, 8%) scale(1.15); }
-        }
-
-        .star-field {
+        .nebula-secondary {
+          content: "";
           position: fixed;
-          top: 0;
-          left: 0;
-          width: 2px;
-          height: 2px;
-          background: transparent;
+          width: 520px;
+          height: 520px;
+          top: 72px;
+          right: -140px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(123, 140, 255, 0.18), rgba(90, 109, 216, 0.08) 42%, transparent 72%);
+          filter: blur(90px);
           pointer-events: none;
-        }
-
-        .s-1 {
-          box-shadow: ${generateStars(300)};
-          animation: spaceFly 100s linear infinite;
-          opacity: 0.5;
-        }
-
-        .s-2 {
-          width: 1px;
-          height: 1px;
-          box-shadow: ${generateStars(500)};
-          animation: spaceFly 150s linear infinite;
-          opacity: 0.3;
-        }
-
-        .s-3 {
-          width: 3px;
-          height: 3px;
-          box-shadow: ${generateStars(100)};
-          animation: spaceFly 80s linear infinite;
-          opacity: 0.2;
-          filter: blur(1px);
-        }
-
-        @keyframes spaceFly {
-          from { transform: translateY(0); }
-          to { transform: translateY(-2000px); }
+          z-index: -2;
+          opacity: 0.7;
         }
 
         #universe-stream {
@@ -188,29 +132,41 @@ const UniverseBackground: React.FC = () => {
         .stream-particle {
           position: absolute;
           border-radius: 999px;
-          background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.98), currentColor 65%, rgba(255, 255, 255, 0) 100%);
+          background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.92), currentColor 58%, rgba(255, 255, 255, 0) 100%);
           box-shadow:
-            0 0 10px currentColor,
-            0 0 20px currentColor;
+            0 0 6px currentColor,
+            0 0 14px currentColor;
+          filter: blur(0.2px);
           opacity: 0;
           will-change: transform, opacity;
-          animation: universeStreamRise var(--duration, 15s) linear forwards;
+          animation: universeStreamRise var(--duration, 14s) linear forwards;
         }
 
         @keyframes universeStreamRise {
           0% {
-            transform: translate3d(0, 0, 0) scale(0.6);
+            transform: translate3d(0, 0, 0) scale(0.7);
             opacity: 0;
           }
           10% {
-            opacity: var(--opacity, 0.5);
+            opacity: var(--opacity, 0.52);
           }
-          90% {
-            opacity: var(--opacity, 0.5);
+          70% {
+            opacity: var(--opacity, 0.52);
           }
           100% {
-            transform: translate3d(var(--drift, 0px), var(--travel, -850px), 0) scale(1.2);
+            transform: translate3d(var(--drift, 0px), var(--travel, -700px), 0) scale(1.08);
             opacity: 0;
+          }
+        }
+
+        @keyframes universeNebulaPulse {
+          from {
+            opacity: 0.45;
+            transform: scale(1);
+          }
+          to {
+            opacity: 0.8;
+            transform: scale(1.04);
           }
         }
       `}</style>
