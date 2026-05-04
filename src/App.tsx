@@ -49,9 +49,8 @@ function App() {
   const iframeSrc = useMemo(() => {
     const id = currentVideo?.id ?? bootVideoId;
     const ap = currentVideo ? 1 : 0;
-    // Dùng www.youtube.com chuẩn thay vì nocookie để tránh lỗi 150/153 trên một số MV.
-    // KHÔNG NỐI thêm origin nếu chạy trong WebView (capacitor://) vì YouTube sẽ báo "Lỗi 153: Lỗi cấu hình"
-    return `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=1&autoplay=${ap}&mute=1&modestbranding=1&rel=0`;
+    // Thêm widget_referrer để đánh lừa YouTube (giảm thiểu lỗi 150/153 do chặn nhúng)
+    return `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=1&autoplay=${ap}&mute=1&modestbranding=1&rel=0&widget_referrer=https%3A%2F%2Fvteen.shop`;
   }, [currentVideo]);
 
   // Send postMessage to YouTube iframe
