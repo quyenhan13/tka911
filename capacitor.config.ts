@@ -11,7 +11,8 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: 'never',
-    backgroundColor: '#050510'
+    backgroundColor: '#050510',
+    allowsInlineMediaPlayback: true
   }
 };
 

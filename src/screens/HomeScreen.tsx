@@ -20,25 +20,39 @@ interface HomeProps {
 const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [history, setHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     setHistory(getHistory());
-    fetchMovies();
+    fetchMovies(1);
   }, []);
 
-  const fetchMovies = async () => {
+  const fetchMovies = async (pageNum: number) => {
+    setLoading(true);
     try {
-      const response = await fetch(`${CONFIG.API_BASE_URL}/movies.php`, { credentials: 'include' });
+      const response = await fetch(`${CONFIG.API_BASE_URL}/movies.php?page=${pageNum}&limit=20`, { credentials: 'include' });
       const result = await response.json();
       if (result.status === 'success') {
         setMovies(result.data);
+        setTotalPages(result.total_pages);
+        setPage(result.page);
+        
+        // Cuộn lên đầu khi chuyển trang
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
       console.error('Fetch error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const goToPage = (p: number) => {
+    if (p !== page && p >= 1 && p <= totalPages) {
+      fetchMovies(p);
     }
   };
 
@@ -52,7 +66,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
     <div className="flex flex-col gap-4 pb-10">
       {/* Top Bar giống phim.php */}
       <header 
-        className="sticky top-0 z-50 px-6 pb-3 flex items-center justify-between border-b border-white/5 bg-background/95 backdrop-blur-xl"
+        className="sticky top-0 z-50 px-6 pb-3 flex items-center justify-between border-b border-white/5 bg-background/10 backdrop-blur-xl"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2rem)', minHeight: 'calc(env(safe-area-inset-top) + 5rem)' }}
       >
         <h1 className="text-xl font-black text-primary tracking-widest uppercase">VTEEN.SHOP</h1>
@@ -116,24 +130,66 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
 
         {loading ? (
           <div className="grid grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="aspect-[2/3] rounded-2xl bg-card animate-pulse" />
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="aspect-[2/3] rounded-2xl bg-card/40 animate-pulse border border-white/5" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
-            {filteredMovies.map((movie) => (
-              <MovieCard 
-                key={movie.slug}
-                title={movie.display_name}
-                poster={movie.poster_url}
-                latestEp={movie.latest_ep}
-                totalEps={movie.total_eps}
-                isSeries={movie.is_series}
-                onClick={() => onWatch(movie.slug)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              {filteredMovies.map((movie) => (
+                <MovieCard 
+                  key={movie.slug}
+                  title={movie.display_name}
+                  poster={movie.poster_url}
+                  latestEp={movie.latest_ep}
+                  totalEps={movie.total_eps}
+                  isSeries={movie.is_series}
+                  onClick={() => onWatch(movie.slug)}
+                />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="mt-12 flex flex-wrap justify-center gap-2 px-6">
+                {/* Nút Prev */}
+                <button 
+                  onClick={() => goToPage(page - 1)}
+                  disabled={page === 1}
+                  className="w-10 h-10 glass rounded-xl flex items-center justify-center text-white disabled:opacity-20"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+
+                {/* Các số trang */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || (p >= page - 1 && p <= page + 1))
+                  .map((p, i, arr) => (
+                    <React.Fragment key={p}>
+                      {i > 0 && arr[i-1] !== p - 1 && <span className="text-text-dim self-end pb-2">...</span>}
+                      <button 
+                        onClick={() => goToPage(p)}
+                        className={`w-10 h-10 rounded-xl font-black text-[10px] transition-all ${
+                          page === p ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'glass text-text-dim'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  ))
+                }
+
+                {/* Nút Next */}
+                <button 
+                  onClick={() => goToPage(page + 1)}
+                  disabled={page === totalPages}
+                  className="w-10 h-10 glass rounded-xl flex items-center justify-center text-white disabled:opacity-20"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

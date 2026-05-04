@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ScreenOrientation as OrientationPlugin } from '@capacitor/screen-orientation';
 import { getHistory, removeFromHistory, saveToHistory } from '../storage/watchHistory';
 import { toggleFavorite, isFavorite } from '../storage/favorites';
+import UniverseBackground from '../components/UniverseBackground';
 import { CONFIG } from '../config';
 
 interface Episode {
@@ -132,7 +133,8 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-background z-[1000] flex items-center justify-center">
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+        <UniverseBackground />
         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -140,7 +142,8 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
   if (error || !details) {
     return (
-      <div className="fixed inset-0 bg-background z-[1000] flex flex-col items-center justify-center p-10 text-center">
+      <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center p-10 text-center">
+        <UniverseBackground />
         <p className="text-text-dim mb-4">{error || 'Không tìm thấy phim'}</p>
         <button onClick={onBack} className="bg-primary px-6 py-2 rounded-full font-bold">Quay lại</button>
       </div>
@@ -148,10 +151,11 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-[1000] flex flex-col overflow-hidden overscroll-none">
+    <div className="fixed inset-0 z-[1000] flex flex-col overflow-hidden overscroll-none">
+      <UniverseBackground />
       {/* Header Bar */}
       <div 
-        className="shrink-0 px-4 pb-4 flex items-center gap-3 border-b border-white/10 bg-background/95 backdrop-blur-xl"
+        className="shrink-0 px-4 pb-4 flex items-center gap-3 border-b border-white/10 bg-background/10 backdrop-blur-xl"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2.5rem)', minHeight: 'calc(env(safe-area-inset-top) + 6rem)' }}
       >
         <button 

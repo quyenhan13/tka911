@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import UniverseBackground from '../components/UniverseBackground';
 import { CONFIG } from '../config';
 
 interface UploadItem {
@@ -85,7 +86,7 @@ const HubScreen: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 pb-10">
       <header 
-        className="px-6 flex justify-between items-end pb-4 border-b border-white/10 bg-background/95 backdrop-blur-xl"
+        className="px-6 flex justify-between items-end pb-4 border-b border-white/10 bg-background/10 backdrop-blur-xl"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2rem)', minHeight: 'calc(env(safe-area-inset-top) + 5rem)' }}
       >
         <div>
@@ -163,11 +164,12 @@ const HubScreen: React.FC = () => {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 bg-background z-[2000] flex flex-col overflow-hidden"
+            className="fixed inset-0 z-[2000] flex flex-col overflow-hidden"
           >
+            <UniverseBackground />
             {/* Header */}
             <div 
-              className="px-6 flex items-center gap-5 pb-6 border-b border-white/10 bg-background/95 backdrop-blur-xl"
+              className="px-6 flex items-center gap-5 pb-6 border-b border-white/10 bg-background/10 backdrop-blur-xl"
               style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.25rem)', minHeight: 'calc(env(safe-area-inset-top) + 4.75rem)' }}
             >
               <button 

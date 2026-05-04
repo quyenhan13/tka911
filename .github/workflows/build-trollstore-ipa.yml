@@ -39,7 +39,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            PRODUCT_BUNDLE_IDENTIFIER=vn.io.vteen.app
+            PRODUCT_BUNDLE_IDENTIFIER=vn.shop.vteen.app
 
       - name: Package TrollStore IPA
         run: |

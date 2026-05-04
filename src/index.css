@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #050510;
-  --color-background-soft: #0B0B18;
-  --color-card: rgba(255, 255, 255, 0.08);
-  --color-border-glass: rgba(255, 255, 255, 0.12);
-  --color-primary: #8B5CF6;
-  --color-secondary: #EF4444;
+  --color-background: #05070a;
+  --color-background-soft: #080a0f;
+  --color-card: rgba(15, 15, 20, 0.6);
+  --color-border-glass: rgba(0, 242, 255, 0.15);
+  --color-primary: #06b6d4;
+  --color-secondary: #7c3aed;
   --color-vip: #FACC15;
   --color-success: #22C55E;
-  --color-text-dim: #A1A1AA;
+  --color-text-dim: #94a3b8;
 }
 
 :root {
   height: 100%;
   overflow: hidden;
-  background-color: var(--color-background);
+  background-color: transparent;
   color: white;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overscroll-behavior: none;
@@ -27,41 +27,16 @@ body {
   height: 100%;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
-  background-color: var(--color-background);
+  background-color: transparent;
   overscroll-behavior: none;
 }
 
-/* Glassmorphism utility */
 .glass {
   background: var(--color-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--color-border-glass);
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.animate-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.animate-shimmer::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  animation: shimmer 1.5s infinite;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -70,4 +45,18 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@keyframes animate-marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  animation: animate-marquee 10s linear infinite;
+}
+
+@keyframes music-bar {
+  0%, 100% { height: 30%; }
+  50% { height: 100%; }
 }

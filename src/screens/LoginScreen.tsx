@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { CONFIG } from '../config';
 
 interface LoginScreenProps {
@@ -20,7 +21,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       const response = await fetch(`${CONFIG.API_BASE_URL}/login.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ username, password }),
       });
 
@@ -29,72 +29,97 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       if (result.status === 'success') {
         onLoginSuccess(result.data);
       } else {
-        setError(result.message);
+        setError(result.message || 'Sai tài khoản hoặc mật khẩu');
       }
     } catch (err) {
-      setError('Không thể kết nối đến server');
+      setError('Kết nối máy chủ thất bại');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-background flex flex-col items-center justify-center p-8 z-200">
-      {/* Background Decor */}
-      <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-primary/20 rounded-full blur-[100px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-secondary/10 rounded-full blur-[100px]" />
-
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 flex flex-col items-center justify-center p-8 z-[200] bg-black/40 backdrop-blur-sm"
+    >
       <div className="w-full max-w-sm z-10">
-        <header className="text-center mb-10">
-          <h1 className="text-5xl font-black text-primary tracking-tighter mb-2">VTEEN</h1>
-          <p className="text-text-dim text-sm uppercase tracking-widest">Private Movie Hub</p>
-        </header>
+        <motion.header 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-center mb-12"
+        >
+          <h1 className="text-6xl font-black bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 tracking-tighter mb-2">VTEEN</h1>
+          <p className="text-primary text-[10px] font-bold uppercase tracking-[0.3em] opacity-80">Premium Private Hub</p>
+        </motion.header>
 
-        <div className="glass border border-white/5 p-8 rounded-[2.5rem] shadow-2xl">
-          <h2 className="text-xl font-bold mb-6 text-white text-center">Đăng nhập hệ thống</h2>
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="glass p-10 rounded-[3rem] border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative overflow-hidden"
+        >
+          {/* Subtle light streak */}
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
           
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
-            <div className="space-y-1">
+          <h2 className="text-xl font-medium mb-8 text-white/90 text-center tracking-tight">Chào mừng trở lại</h2>
+          
+          <form onSubmit={handleLogin} className="flex flex-col gap-5">
+            <div className="relative">
               <input
                 type="text"
-                placeholder="Tài khoản"
+                placeholder="Tên đăng nhập"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm text-white focus:outline-none focus:border-primary transition-all"
+                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-6 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-primary/50 focus:bg-white/[0.06] transition-all"
                 required
               />
             </div>
             
-            <div className="space-y-1">
+            <div className="relative">
               <input
                 type="password"
                 placeholder="Mật khẩu"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm text-white focus:outline-none focus:border-primary transition-all"
+                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-6 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-primary/50 focus:bg-white/[0.06] transition-all"
                 required
               />
             </div>
 
             {error && (
-              <p className="text-red-400 text-xs text-center mt-2 animate-pulse">{error}</p>
+              <motion.p 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-400 text-[11px] text-center font-medium"
+              >
+                {error}
+              </motion.p>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-4 bg-linear-to-r from-primary to-violet-600 text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-primary/20 active:scale-95 transition-all disabled:opacity-50"
+              className="mt-4 relative group overflow-hidden bg-white text-black py-4 rounded-2xl font-black text-xs tracking-widest uppercase transition-all active:scale-95 disabled:opacity-50"
             >
-              {loading ? 'Đang xác thực...' : 'ĐĂNG NHẬP'}
+              <span className="relative z-10">{loading ? 'Xác thực...' : 'Vào hệ thống'}</span>
+              <div className="absolute inset-0 bg-primary opacity-0 group-hover:opacity-10 transition-opacity" />
             </button>
           </form>
-        </div>
+        </motion.div>
 
-        <p className="mt-8 text-center text-text-dim text-xs">
-          Ứng dụng nội bộ. Vui lòng không chia sẻ tài khoản.
-        </p>
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-10 text-center text-white/20 text-[9px] uppercase tracking-widest font-medium"
+        >
+          Authorized Access Only • VTeen iOS v1.0
+        </motion.p>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
