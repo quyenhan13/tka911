@@ -25,6 +25,15 @@ const fmt = (s: number) => {
   return `${m}:${sec.toString().padStart(2, '0')}`;
 };
 
+// Lấy origin hợp lệ cho WKWebView (iOS IPA)
+const getSafeOrigin = () => {
+  const origin = window.location.origin;
+  if (!origin || origin === 'null' || origin.startsWith('file') || origin.startsWith('capacitor')) {
+    return 'https://vteen.shop';
+  }
+  return origin;
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [watchingSlug, setWatchingSlug] = useState<string | null>(null);
@@ -102,7 +111,7 @@ function App() {
             controls: 0,
             playsinline: 1,
             mute: 0,
-            origin: window.location.origin
+            origin: getSafeOrigin()
           },
           events: {
             onReady: (e: any) => {
