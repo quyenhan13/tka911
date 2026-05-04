@@ -18,7 +18,7 @@ interface Video {
 }
 
 const fmt = (s: number) => {
-  if (!s || isNaN(s)) return '0:00';
+  if (typeof s !== 'number' || !Number.isFinite(s) || s < 0) return '0:00';
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   return `${m}:${sec.toString().padStart(2, '0')}`;
@@ -33,12 +33,14 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [tubeExpanded, setTubeExpanded] = useState(false);
   
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const progressInterval = useRef<any>(null);
   const playlistRef = useRef<Video[]>([]);
   const ytListeningRef = useRef(false);
   const pendingPlayRef = useRef<Video | null>(null);
+  const playRetryTimersRef = useRef<number[]>([]);
   const embedOrigin =
     typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
   const iframeSrc =
@@ -86,21 +88,20 @@ function App() {
           const state = data.info; // 1=PLAYING, 2=PAUSED, 0=ENDED
           if (state === 1) {
             setIsPlaying(true);
-            startProgressLoop();
           } else if (state === 2) {
             setIsPlaying(false);
-            stopProgressLoop();
           } else if (state === 0) {
-            stopProgressLoop();
             playNextRef.current?.();
           }
         }
         if (data.event === 'infoDelivery' && data.info) {
-          if (data.info.currentTime !== undefined && data.info.currentTime > 0) {
-            setCurrentTime(data.info.currentTime);
+          const ct = data.info.currentTime;
+          if (typeof ct === 'number' && Number.isFinite(ct) && ct >= 0) {
+            setCurrentTime(ct);
           }
-          if (data.info.duration !== undefined && data.info.duration > 0) {
-            setDuration(data.info.duration);
+          const dur = data.info.duration;
+          if (typeof dur === 'number' && Number.isFinite(dur) && dur > 0) {
+            setDuration(dur);
           }
         }
       } catch (err) {}
@@ -110,6 +111,8 @@ function App() {
     return () => {
       window.removeEventListener('message', onMessage);
       stopProgressLoop();
+      playRetryTimersRef.current.forEach((t) => window.clearTimeout(t));
+      playRetryTimersRef.current = [];
     };
   }, []);
 
@@ -117,28 +120,27 @@ function App() {
 
   const ytSendPlay = useCallback(
     (video: Video) => {
-      sendCommand('unMute');
-      sendCommand('setVolume', [100]);
-      sendCommand('loadVideoById', [video.id]);
-      sendCommand('playVideo');
-      const retry = () => {
+      playRetryTimersRef.current.forEach((t) => window.clearTimeout(t));
+      playRetryTimersRef.current = [];
+
+      const perform = () => {
         sendCommand('unMute');
+        sendCommand('setVolume', [100]);
+        sendCommand('loadVideoById', [video.id]);
         sendCommand('playVideo');
+        sendCommand('getDuration');
+        sendCommand('getCurrentTime');
       };
-      requestAnimationFrame(retry);
-      setTimeout(retry, 150);
-      setTimeout(retry, 600);
+
+      // iOS/WKWebView có thể nuốt lệnh đầu; gửi lại theo nhiều nhịp để đảm bảo phát.
+      perform();
+      [120, 380, 850, 1600].forEach((ms) => {
+        const timer = window.setTimeout(perform, ms);
+        playRetryTimersRef.current.push(timer);
+      });
     },
     [sendCommand]
   );
-
-  const startProgressLoop = () => {
-    stopProgressLoop();
-    progressInterval.current = setInterval(() => {
-      sendCommand('getCurrentTime');
-      sendCommand('getDuration');
-    }, 500);
-  };
 
   const stopProgressLoop = () => {
     if (progressInterval.current) {
@@ -154,14 +156,37 @@ function App() {
       setCurrentTime(0);
       setDuration(0);
       setIsPlaying(true);
+      if (activeTab === 'tube') setTubeExpanded(true);
       if (!ytListeningRef.current) {
         pendingPlayRef.current = video;
         return;
       }
       ytSendPlay(video);
     },
-    [ytSendPlay]
+    [ytSendPlay, activeTab]
   );
+
+  useEffect(() => {
+    if (!currentVideo) {
+      setTubeExpanded(false);
+      if (progressInterval.current) {
+        clearInterval(progressInterval.current);
+        progressInterval.current = null;
+      }
+      return;
+    }
+    if (progressInterval.current) clearInterval(progressInterval.current);
+    progressInterval.current = setInterval(() => {
+      sendCommand('getCurrentTime');
+      sendCommand('getDuration');
+    }, 500);
+    return () => {
+      if (progressInterval.current) {
+        clearInterval(progressInterval.current);
+        progressInterval.current = null;
+      }
+    };
+  }, [currentVideo?.id, sendCommand]);
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
@@ -292,10 +317,15 @@ function App() {
                   </div>
 
                   <div className="flex items-center justify-between px-3 py-2 gap-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <button
+                      type="button"
+                      className="flex items-center gap-3 flex-1 min-w-0 text-left active:opacity-80"
+                      onClick={() => setTubeExpanded(true)}
+                    >
                       <div className="relative w-9 h-9 flex-shrink-0">
                         <img
                           src={currentVideo.thumbnail}
+                          alt=""
                           className={`w-full h-full rounded-lg object-cover border border-white/10 ${isPlaying ? 'animate-[spin_8s_linear_infinite]' : ''}`}
                           style={{ borderRadius: '50%' }}
                         />
@@ -307,7 +337,7 @@ function App() {
                         <h4 className="text-[12px] font-bold text-white truncate">{currentVideo.title}</h4>
                         <p className="text-[10px] text-primary/80 truncate">{currentVideo.channelTitle}</p>
                       </div>
-                    </div>
+                    </button>
 
                     <span className="text-[9px] text-white/40 font-mono flex-shrink-0">
                       {fmt(currentTime)}/{fmt(duration)}
@@ -331,6 +361,81 @@ function App() {
                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
                       </button>
                     </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {tubeExpanded && currentVideo && !watchingSlug && (
+              <motion.div
+                key="tube-expanded"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[900] flex flex-col bg-[#050510]/95 backdrop-blur-xl"
+                style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+              >
+                <button
+                  type="button"
+                  aria-label="Đóng trình phát"
+                  className="absolute top-3 right-4 z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:bg-white/20"
+                  style={{ top: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
+                  onClick={() => setTubeExpanded(false)}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+
+                <div className="flex-1 flex flex-col justify-center px-6 pt-14 pb-8 min-h-0">
+                  <div className="w-full max-w-sm mx-auto aspect-square max-h-[45vh] rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] border border-white/10 mb-8">
+                    <img
+                      src={currentVideo.thumbnail}
+                      alt=""
+                      className={`w-full h-full object-cover ${isPlaying ? 'scale-[1.02]' : ''}`}
+                    />
+                  </div>
+                  <div className="text-center mb-6 px-2">
+                    <h2 className="text-lg font-bold text-white leading-snug line-clamp-2">{currentVideo.title}</h2>
+                    <p className="text-sm text-primary mt-2">{currentVideo.channelTitle}</p>
+                  </div>
+                  <div
+                    className="h-1.5 w-full bg-white/10 rounded-full relative cursor-pointer mb-2"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const ratio = (e.clientX - rect.left) / rect.width;
+                      handleSeek(ratio * (duration || 0));
+                    }}
+                  >
+                    <div
+                      className="absolute h-full bg-primary rounded-full shadow-[0_0_12px_#06b6d4]"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[11px] text-white/40 font-mono mb-8">
+                    <span>{fmt(currentTime)}</span>
+                    <span>{fmt(duration)}</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-10">
+                    <button type="button" onClick={playPrev} className="text-white/50 active:text-white p-2">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={togglePlay}
+                      className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center active:scale-95 shadow-xl"
+                    >
+                      {isPlaying ? (
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7 ml-1"><path d="M8 5v14l11-7z"/></svg>
+                      )}
+                    </button>
+                    <button type="button" onClick={playNext} className="text-white/50 active:text-white p-2">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                    </button>
                   </div>
                 </div>
               </motion.div>
@@ -374,12 +479,12 @@ function App() {
       >
         <iframe
           ref={iframeRef}
-          width="100%"
-          height="100%"
+          width="1"
+          height="1"
           src={iframeSrc}
           allow="autoplay; encrypted-media; fullscreen"
           allowFullScreen={false}
-          style={{ border: 'none' }}
+          style={{ border: 'none', position: 'absolute', width: 1, height: 1, opacity: 0.01 }}
           title="yt-player"
           onLoad={() => {
             if (ytListeningRef.current) return;
