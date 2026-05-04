@@ -17,7 +17,6 @@ interface Video {
   channelTitle: string;
 }
 
-// Format seconds → mm:ss
 const fmt = (s: number) => {
   if (!s || isNaN(s)) return '0:00';
   const m = Math.floor(s / 60);
@@ -25,31 +24,30 @@ const fmt = (s: number) => {
   return `${m}:${sec.toString().padStart(2, '0')}`;
 };
 
-// Lấy origin hợp lệ cho WKWebView (iOS IPA)
-const getSafeOrigin = () => {
-  const origin = window.location.origin;
-  if (!origin || origin === 'null' || origin.startsWith('file') || origin.startsWith('capacitor')) {
-    return 'https://vteen.shop';
-  }
-  return origin;
-};
-
 function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [watchingSlug, setWatchingSlug] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
 
-  // Music Player State
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const progressInterval = useRef<any>(null);
   const playlistRef = useRef<Video[]>([]);
 
-
-  const playerRef = useRef<any>(null);
-  const progressInterval = useRef<any>(null);
-  const pendingVideoRef = useRef<string | null>(null);
+  // Send postMessage to YouTube iframe
+  const sendCommand = useCallback((func: string, args?: any[]) => {
+    if (!iframeRef.current?.contentWindow) return;
+    try {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func, args: args || [] }),
+        '*'
+      );
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('vteen_user');
@@ -62,29 +60,50 @@ function App() {
       }
     }
 
-    // Load YouTube IFrame API
-    if (!(window as any).YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      document.head.appendChild(tag);
-    }
+    const onMessage = (e: MessageEvent) => {
+      try {
+        // YT sends JSON string or object
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (!data || !data.event) return;
 
-    // Lắng nghe message từ iframe (iOS cần cách này)
-    // Đã xóa manual postMessage, sử dụng YT.Player API chuẩn.
+        if (data.event === 'onStateChange') {
+          const state = data.info; // 1=PLAYING, 2=PAUSED, 0=ENDED
+          if (state === 1) {
+            setIsPlaying(true);
+            startProgressLoop();
+          } else if (state === 2) {
+            setIsPlaying(false);
+            stopProgressLoop();
+          } else if (state === 0) {
+            stopProgressLoop();
+            playNextRef.current?.();
+          }
+        }
+        if (data.event === 'infoDelivery' && data.info) {
+          if (data.info.currentTime !== undefined && data.info.currentTime > 0) {
+            setCurrentTime(data.info.currentTime);
+          }
+          if (data.info.duration !== undefined && data.info.duration > 0) {
+            setDuration(data.info.duration);
+          }
+        }
+      } catch (err) {}
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      stopProgressLoop();
+    };
   }, []);
 
-  // Ref để tránh stale closure trong playNext
   const playNextRef = useRef<(() => void) | undefined>(undefined);
 
   const startProgressLoop = () => {
     stopProgressLoop();
     progressInterval.current = setInterval(() => {
-      if (playerRef.current?.getCurrentTime) {
-        const t = playerRef.current.getCurrentTime();
-        const d = playerRef.current.getDuration();
-        if (t > 0) setCurrentTime(t);
-        if (d > 0) setDuration(d);
-      }
+      sendCommand('getCurrentTime');
+      sendCommand('getDuration');
     }, 500);
   };
 
@@ -95,113 +114,32 @@ function App() {
     }
   };
 
-  // Init YT Player object
-  useEffect(() => {
-    const tryInit = () => {
-      if (playerRef.current || !(window as any).YT?.Player) return;
-      const el = document.getElementById('yt-hidden-player');
-      if (!el) return;
-      try {
-        playerRef.current = new (window as any).YT.Player('yt-hidden-player', {
-          width: '200',
-          height: '200',
-          videoId: 'jfKfPfyJRdk', // Default video to ensure full initialization
-          playerVars: {
-            autoplay: 0,
-            controls: 0,
-            playsinline: 1,
-            mute: 0,
-            origin: getSafeOrigin()
-          },
-          events: {
-            onReady: (e: any) => {
-              e.target.unMute();
-              e.target.setVolume(100);
-              if (pendingVideoRef.current) {
-                e.target.loadVideoById(pendingVideoRef.current);
-                pendingVideoRef.current = null;
-              }
-            },
-            onStateChange: (e: any) => {
-              if (e.data === 1) {
-                playerRef.current?.unMute?.();
-                playerRef.current?.setVolume?.(100);
-                setIsPlaying(true);
-                setDuration(playerRef.current?.getDuration?.() || 0);
-                startProgressLoop();
-              } else if (e.data === 2) {
-                setIsPlaying(false);
-                stopProgressLoop();
-              } else if (e.data === 0) {
-                stopProgressLoop();
-                playNextRef.current?.();
-              }
-            }
-          }
-        });
-      } catch {}
-    };
-
-    (window as any).onYouTubeIframeAPIReady = tryInit;
-    const iv = setInterval(() => {
-      if ((window as any).YT?.Player) { tryInit(); clearInterval(iv); }
-    }, 300);
-    return () => clearInterval(iv);
-  }, []);
-
-  // Media Session (Lock Screen Controls)
-  useEffect(() => {
-    if (!('mediaSession' in navigator) || !currentVideo) return;
-    navigator.mediaSession.metadata = new window.MediaMetadata({
-      title: currentVideo.title,
-      artist: currentVideo.channelTitle,
-      artwork: [{ src: currentVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }]
-    });
-    navigator.mediaSession.setActionHandler('play', () => {
-      playerRef.current?.unMute?.();
-      playerRef.current?.setVolume?.(100);
-      playerRef.current?.playVideo?.();
-    });
-    navigator.mediaSession.setActionHandler('pause', () => {
-      playerRef.current?.pauseVideo?.();
-    });
-    navigator.mediaSession.setActionHandler('nexttrack', () => playNextRef.current?.());
-    navigator.mediaSession.setActionHandler('previoustrack', () => playPrevRef.current?.());
-  }, [currentVideo]);
-
   const playVideo = useCallback((video: Video, list?: Video[]) => {
-    // iOS: Gọi API của YouTube TRƯỚC TIÊN, ngay lập tức trong call stack của sự kiện onClick
-    if (playerRef.current?.loadVideoById) {
-      try {
-        playerRef.current.unMute?.();
-        playerRef.current.setVolume?.(100);
-        playerRef.current.loadVideoById(video.id);
-        playerRef.current.playVideo?.();
-      } catch (e) {}
-    } else {
-      // Player chưa sẵn sàng — lưu lại để phát sau
-      pendingVideoRef.current = video.id;
-    }
+    // 1. Gửi lệnh tới iframe ngay lập tức
+    sendCommand('unMute');
+    sendCommand('setVolume', [100]);
+    sendCommand('loadVideoById', [video.id]);
+    sendCommand('playVideo');
 
+    // 2. Cập nhật UI
     if (list) playlistRef.current = list;
     setCurrentVideo(video);
     setCurrentTime(0);
     setDuration(0);
     setIsPlaying(true);
-  }, []);
+  }, [sendCommand]);
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
-      playerRef.current?.pauseVideo?.();
+      sendCommand('pauseVideo');
       setIsPlaying(false);
     } else {
-      // iOS: unMute trong user gesture
-      playerRef.current?.unMute?.();
-      playerRef.current?.setVolume?.(100);
-      playerRef.current?.playVideo?.();
+      sendCommand('unMute');
+      sendCommand('setVolume', [100]);
+      sendCommand('playVideo');
       setIsPlaying(true);
     }
-  }, [isPlaying]);
+  }, [isPlaying, sendCommand]);
 
   const playNext = useCallback(() => {
     const pl = playlistRef.current;
@@ -225,15 +163,28 @@ function App() {
     });
   }, [playVideo]);
 
-  // Refs để dùng trong closures
   const playPrevRef = useRef<(() => void) | undefined>(undefined);
   useEffect(() => { playPrevRef.current = playPrev; }, [playPrev]);
   useEffect(() => { playNextRef.current = playNext; }, [playNext]);
 
   const handleSeek = (val: number) => {
     setCurrentTime(val);
-    playerRef.current?.seekTo?.(val, true);
+    sendCommand('seekTo', [val, true]);
   };
+
+  // Media Session
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentVideo) return;
+    navigator.mediaSession.metadata = new window.MediaMetadata({
+      title: currentVideo.title,
+      artist: currentVideo.channelTitle,
+      artwork: [{ src: currentVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }]
+    });
+    navigator.mediaSession.setActionHandler('play', togglePlay);
+    navigator.mediaSession.setActionHandler('pause', togglePlay);
+    navigator.mediaSession.setActionHandler('nexttrack', () => playNextRef.current?.());
+    navigator.mediaSession.setActionHandler('previoustrack', () => playPrevRef.current?.());
+  }, [currentVideo, togglePlay]);
 
   const handleLoginSuccess = (userData: any) => {
     if (!userData?.api_token) { localStorage.removeItem('vteen_user'); return; }
@@ -279,7 +230,6 @@ function App() {
             </motion.main>
           </AnimatePresence>
 
-          {/* Mini Player Bar */}
           <AnimatePresence>
             {currentVideo && !watchingSlug && (
               <motion.div
@@ -289,7 +239,6 @@ function App() {
                 className="fixed bottom-[5.8rem] left-0 right-0 z-[60] px-3 pointer-events-none"
               >
                 <div className="bg-[#0f141f] border border-white/5 shadow-[0_-15px_50px_rgba(0,0,0,0.6)] overflow-hidden rounded-2xl pointer-events-auto relative">
-                  {/* Thanh tiến độ clickable */}
                   <div
                     className="h-1 w-full bg-white/10 relative cursor-pointer group"
                     onClick={(e) => {
@@ -309,7 +258,6 @@ function App() {
                   </div>
 
                   <div className="flex items-center justify-between px-3 py-2 gap-3">
-                    {/* Thumbnail + Info */}
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="relative w-9 h-9 flex-shrink-0">
                         <img
@@ -327,12 +275,10 @@ function App() {
                       </div>
                     </div>
 
-                    {/* Time Display */}
                     <span className="text-[9px] text-white/40 font-mono flex-shrink-0">
                       {fmt(currentTime)}/{fmt(duration)}
                     </span>
 
-                    {/* Controls */}
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <button onClick={playPrev} className="text-white/40 active:text-white transition-colors p-1">
                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
@@ -376,23 +322,32 @@ function App() {
       )}
 
       {/*
-        YouTube player container.
-        iOS Safari yêu cầu player phải có kích thước thật và KHÔNG bị opacity/visibility hidden.
+        Trực tiếp nhúng iframe để vượt mặt WebView iOS.
+        ID jfKfPfyJRdk (Lofi Girl) làm video mồi để YouTube load JS nội bộ.
       */}
       <div
         style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          width: 200,
-          height: 200,
+          bottom: 0,
+          right: 0,
+          width: 50,
+          height: 50,
           opacity: 0.01,
           pointerEvents: 'none',
-          zIndex: 9999,
+          zIndex: -1,
         }}
         aria-hidden="true"
       >
-        <div id="yt-hidden-player" style={{ width: '100%', height: '100%' }}></div>
+        <iframe
+          ref={iframeRef}
+          width="100%"
+          height="100%"
+          src="https://www.youtube.com/embed/jfKfPfyJRdk?enablejsapi=1&playsinline=1&controls=0&autoplay=0&mute=0"
+          allow="autoplay; encrypted-media"
+          allowFullScreen={false}
+          style={{ border: 'none' }}
+          title="yt-player"
+        />
       </div>
     </div>
   );
