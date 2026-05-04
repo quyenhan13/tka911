@@ -95,9 +95,9 @@ function App() {
       if (!el) return;
       try {
         playerRef.current = new (window as any).YT.Player('yt-hidden-player', {
-          width: '2',
-          height: '2',
-          videoId: '', // Initialize empty
+          width: '200',
+          height: '200',
+          videoId: 'jfKfPfyJRdk', // Default video to ensure full initialization
           playerVars: {
             autoplay: 0,
             controls: 0,
@@ -163,22 +163,25 @@ function App() {
   }, [currentVideo]);
 
   const playVideo = useCallback((video: Video, list?: Video[]) => {
+    // iOS: Gọi API của YouTube TRƯỚC TIÊN, ngay lập tức trong call stack của sự kiện onClick
+    if (playerRef.current?.loadVideoById) {
+      try {
+        playerRef.current.unMute?.();
+        playerRef.current.setVolume?.(100);
+        playerRef.current.loadVideoById(video.id);
+        playerRef.current.playVideo?.();
+      } catch (e) {}
+    } else {
+      // Player chưa sẵn sàng — lưu lại để phát sau
+      pendingVideoRef.current = video.id;
+    }
+
     if (list) playlistRef.current = list;
     setCurrentVideo(video);
     setCurrentTime(0);
     setDuration(0);
     setIsPlaying(true);
-
-    // iOS: gọi unMute + setVolume TRONG cùng user gesture này
-    if (playerRef.current?.loadVideoById) {
-      playerRef.current.unMute?.();
-      playerRef.current.setVolume?.(100);
-      playerRef.current.loadVideoById(video.id);
-    } else {
-      // Player chưa sẵn sàng — lưu lại để phát sau
-      pendingVideoRef.current = video.id;
-    }
-  }, [playerReady]);
+  }, []);
 
   const togglePlay = useCallback(() => {
     if (isPlaying) {
@@ -372,17 +375,17 @@ function App() {
       <div
         style={{
           position: 'fixed',
-          bottom: 0,
-          right: 0,
-          width: 2,
-          height: 2,
-          overflow: 'hidden',
-          zIndex: -1,
+          top: 0,
+          left: 0,
+          width: 200,
+          height: 200,
+          opacity: 0.01,
           pointerEvents: 'none',
+          zIndex: 9999,
         }}
         aria-hidden="true"
       >
-        <div id="yt-hidden-player" style={{ width: 2, height: 2 }}></div>
+        <div id="yt-hidden-player" style={{ width: '100%', height: '100%' }}></div>
       </div>
     </div>
   );
