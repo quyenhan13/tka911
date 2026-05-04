@@ -67,7 +67,7 @@ const TubeScreen: React.FC<TubeProps> = ({ currentVideo, playVideo }) => {
             placeholder="Tìm nhạc trên Tube..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#27272a] border border-white/5 rounded-full py-3.5 pl-12 pr-6 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-primary transition-all shadow-inner"
+            className="w-full bg-card/50 border border-border-glass rounded-2xl py-4 px-12 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-primary transition-all"
           />
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-primary transition-colors">
             {loading ? (
