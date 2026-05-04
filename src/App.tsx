@@ -62,65 +62,15 @@ function App() {
     }
 
     // Lắng nghe message từ iframe (iOS cần cách này)
-    const onMessage = (e: MessageEvent) => {
-      try {
-        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-        if (data?.event === 'onReady') {
-          setPlayerReady(true);
-          // iOS: phải unmute ngay trong handler này
-          sendCommand('unMute');
-          sendCommand('setVolume', [100]);
-          if (pendingVideoRef.current) {
-            sendCommand('loadVideoById', [{ videoId: pendingVideoRef.current }]);
-            pendingVideoRef.current = null;
-          }
-        }
-        if (data?.event === 'onStateChange') {
-          const state = data?.info;
-          if (state === 1) { // PLAYING
-            setIsPlaying(true);
-            startProgressLoop();
-          } else if (state === 2) { // PAUSED
-            setIsPlaying(false);
-            stopProgressLoop();
-          } else if (state === 0) { // ENDED
-            stopProgressLoop();
-            playNextRef.current?.();
-          }
-        }
-        if (data?.event === 'infoDelivery' && data?.info?.currentTime !== undefined) {
-          if (data.info.currentTime > 0) setCurrentTime(data.info.currentTime);
-          if (data.info.duration > 0) setDuration(data.info.duration);
-        }
-      } catch {}
-    };
-
-    window.addEventListener('message', onMessage);
-    return () => {
-      window.removeEventListener('message', onMessage);
-      stopProgressLoop();
-    };
+    // Đã xóa manual postMessage, sử dụng YT.Player API chuẩn.
   }, []);
 
   // Ref để tránh stale closure trong playNext
   const playNextRef = useRef<(() => void) | undefined>(undefined);
 
-  const sendCommand = (func: string, args?: any[]) => {
-    try {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: 'command', func, args: args || [] }),
-        '*'
-      );
-    } catch {}
-  };
-
   const startProgressLoop = () => {
     stopProgressLoop();
     progressInterval.current = setInterval(() => {
-      // Yêu cầu thông tin từ iframe mỗi giây
-      sendCommand('getCurrentTime');
-      sendCommand('getDuration');
-      // Lấy từ player API trực tiếp nếu có
       if (playerRef.current?.getCurrentTime) {
         const t = playerRef.current.getCurrentTime();
         const d = playerRef.current.getDuration();
@@ -137,7 +87,7 @@ function App() {
     }
   };
 
-  // Init YT Player object (song song với iframe approach)
+  // Init YT Player object
   useEffect(() => {
     const tryInit = () => {
       if (playerRef.current || !(window as any).YT?.Player) return;
@@ -145,6 +95,16 @@ function App() {
       if (!el) return;
       try {
         playerRef.current = new (window as any).YT.Player('yt-hidden-player', {
+          width: '2',
+          height: '2',
+          videoId: '', // Initialize empty
+          playerVars: {
+            autoplay: 0,
+            controls: 0,
+            playsinline: 1,
+            mute: 0,
+            origin: window.location.origin
+          },
           events: {
             onReady: (e: any) => {
               setPlayerReady(true);
@@ -191,12 +151,12 @@ function App() {
       artwork: [{ src: currentVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }]
     });
     navigator.mediaSession.setActionHandler('play', () => {
+      playerRef.current?.unMute?.();
+      playerRef.current?.setVolume?.(100);
       playerRef.current?.playVideo?.();
-      sendCommand('playVideo');
     });
     navigator.mediaSession.setActionHandler('pause', () => {
       playerRef.current?.pauseVideo?.();
-      sendCommand('pauseVideo');
     });
     navigator.mediaSession.setActionHandler('nexttrack', () => playNextRef.current?.());
     navigator.mediaSession.setActionHandler('previoustrack', () => playPrevRef.current?.());
@@ -214,10 +174,6 @@ function App() {
       playerRef.current.unMute?.();
       playerRef.current.setVolume?.(100);
       playerRef.current.loadVideoById(video.id);
-    } else if (playerReady) {
-      sendCommand('unMute');
-      sendCommand('setVolume', [100]);
-      sendCommand('loadVideoById', [{ videoId: video.id }]);
     } else {
       // Player chưa sẵn sàng — lưu lại để phát sau
       pendingVideoRef.current = video.id;
@@ -227,16 +183,12 @@ function App() {
   const togglePlay = useCallback(() => {
     if (isPlaying) {
       playerRef.current?.pauseVideo?.();
-      sendCommand('pauseVideo');
       setIsPlaying(false);
     } else {
       // iOS: unMute trong user gesture
       playerRef.current?.unMute?.();
       playerRef.current?.setVolume?.(100);
       playerRef.current?.playVideo?.();
-      sendCommand('unMute');
-      sendCommand('setVolume', [100]);
-      sendCommand('playVideo');
       setIsPlaying(true);
     }
   }, [isPlaying]);
@@ -271,7 +223,6 @@ function App() {
   const handleSeek = (val: number) => {
     setCurrentTime(val);
     playerRef.current?.seekTo?.(val, true);
-    sendCommand('seekTo', [val, true]);
   };
 
   const handleLoginSuccess = (userData: any) => {
@@ -415,9 +366,8 @@ function App() {
       )}
 
       {/*
-        YouTube iframe player thực sự hiển thị nhưng clip bằng clip-path.
-        iOS Safari yêu cầu iframe phải có kích thước thật và KHÔNG bị opacity/visibility hidden.
-        enablejsapi=1 + origin cho phép postMessage.
+        YouTube player container.
+        iOS Safari yêu cầu player phải có kích thước thật và KHÔNG bị opacity/visibility hidden.
       */}
       <div
         style={{
@@ -432,17 +382,7 @@ function App() {
         }}
         aria-hidden="true"
       >
-        <iframe
-          id="yt-hidden-player"
-          ref={iframeRef}
-          width="2"
-          height="2"
-          src={`https://www.youtube.com/embed/?enablejsapi=1&playsinline=1&controls=0&autoplay=0&mute=0&origin=${encodeURIComponent(window.location.origin)}`}
-          allow="autoplay; encrypted-media"
-          allowFullScreen={false}
-          style={{ border: 'none', display: 'block' }}
-          title="yt-player"
-        />
+        <div id="yt-hidden-player" style={{ width: 2, height: 2 }}></div>
       </div>
     </div>
   );
