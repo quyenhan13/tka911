@@ -100,10 +100,10 @@ const TubeScreen: React.FC<TubeProps> = ({ currentVideo, playVideo }) => {
                 key={video.id}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => playVideo(video, videos)}
-                className={`p-2 rounded-2xl border transition-all backdrop-blur-md ${
+                className={`p-2 rounded-2xl border transition-all ${
                   currentVideo?.id === video.id 
-                    ? 'bg-primary/30 border-primary shadow-[0_0_20px_rgba(6,182,212,0.4)]' 
-                    : 'bg-white/5 border-white/10'
+                    ? 'bg-primary/20 border-primary shadow-[0_0_15px_rgba(6,182,212,0.3)]' 
+                    : 'bg-card border-white/5'
                 }`}
               >
                 <img src={video.thumbnail} className="w-full aspect-video rounded-xl object-cover mb-2" />

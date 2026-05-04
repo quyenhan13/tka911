@@ -15,7 +15,7 @@
 :root {
   height: 100%;
   overflow: hidden;
-  background-color: transparent;
+  background-color: #05070a;
   color: white;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overscroll-behavior: none;
@@ -27,7 +27,7 @@ body {
   height: 100%;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
-  background-color: transparent;
+  background-color: #05070a;
   overscroll-behavior: none;
 }
 

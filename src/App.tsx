@@ -218,7 +218,7 @@ function App() {
                 exit={{ y: 100, opacity: 0 }}
                 className="fixed bottom-[5.8rem] left-0 right-0 z-[60] px-3 pointer-events-none"
               >
-                <div className="bg-[#0f141f]/95 backdrop-blur-3xl border border-white/10 shadow-[0_-15px_50px_rgba(0,0,0,0.6)] overflow-hidden rounded-2xl pointer-events-auto">
+                <div className="bg-[#0f141f] border border-white/5 shadow-[0_-15px_50px_rgba(0,0,0,0.6)] overflow-hidden rounded-2xl pointer-events-auto">
                   {/* Progress Line at Top */}
                   <div className="h-0.5 w-full bg-white/5 relative">
                     <div 
