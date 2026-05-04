@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import BottomTabs from './components/BottomTabs'
 import HomeScreen from './screens/HomeScreen'
@@ -17,20 +17,31 @@ interface Video {
   channelTitle: string;
 }
 
+// Format seconds → mm:ss
+const fmt = (s: number) => {
+  if (!s || isNaN(s)) return '0:00';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [watchingSlug, setWatchingSlug] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
 
-  // Music Player State (Global)
+  // Music Player State
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [playlist, setPlaylist] = useState<Video[]>([]);
-  
+  const [playerReady, setPlayerReady] = useState(false);
+
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<any>(null);
   const progressInterval = useRef<any>(null);
+  const pendingVideoRef = useRef<string | null>(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('vteen_user');
@@ -43,175 +54,234 @@ function App() {
       }
     }
 
-    // Load YouTube API
+    // Load YouTube IFrame API
     if (!(window as any).YT) {
       const tag = document.createElement('script');
-      tag.src = "https://www.youtube.com/iframe_api";
+      tag.src = 'https://www.youtube.com/iframe_api';
       document.head.appendChild(tag);
     }
 
-    (window as any).onYouTubeIframeAPIReady = () => {
-      initPlayer();
+    // Lắng nghe message từ iframe (iOS cần cách này)
+    const onMessage = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (data?.event === 'onReady') {
+          setPlayerReady(true);
+          // iOS: phải unmute ngay trong handler này
+          sendCommand('unMute');
+          sendCommand('setVolume', [100]);
+          if (pendingVideoRef.current) {
+            sendCommand('loadVideoById', [{ videoId: pendingVideoRef.current }]);
+            pendingVideoRef.current = null;
+          }
+        }
+        if (data?.event === 'onStateChange') {
+          const state = data?.info;
+          if (state === 1) { // PLAYING
+            setIsPlaying(true);
+            startProgressLoop();
+          } else if (state === 2) { // PAUSED
+            setIsPlaying(false);
+            stopProgressLoop();
+          } else if (state === 0) { // ENDED
+            stopProgressLoop();
+            playNextRef.current?.();
+          }
+        }
+        if (data?.event === 'infoDelivery' && data?.info?.currentTime !== undefined) {
+          if (data.info.currentTime > 0) setCurrentTime(data.info.currentTime);
+          if (data.info.duration > 0) setDuration(data.info.duration);
+        }
+      } catch {}
     };
 
-    const checkInterval = setInterval(() => {
-      if ((window as any).YT && (window as any).YT.Player) {
-        initPlayer();
-        clearInterval(checkInterval);
-      }
-    }, 500);
-
+    window.addEventListener('message', onMessage);
     return () => {
-      if (progressInterval.current) clearInterval(progressInterval.current);
-      clearInterval(checkInterval);
+      window.removeEventListener('message', onMessage);
+      stopProgressLoop();
     };
   }, []);
 
-  const initPlayer = () => {
-    if (playerRef.current) return;
-    const container = document.getElementById('yt-player-container');
-    if (!container || !(window as any).YT || !(window as any).YT.Player) return;
+  // Ref để tránh stale closure trong playNext
+  const playNextRef = useRef<() => void>();
 
+  const sendCommand = (func: string, args?: any[]) => {
     try {
-      playerRef.current = new (window as any).YT.Player('yt-player-container', {
-        height: '1',
-        width: '1',
-        playerVars: { 
-          'autoplay': 0, 
-          'controls': 0, 
-          'playsinline': 1,
-          'mute': 0,
-          'origin': window.location.origin
-        },
-        events: {
-          'onReady': (event: any) => {
-            // iOS: phải unmute + set volume ngay khi player sẵn sàng
-            event.target.unMute();
-            event.target.setVolume(100);
-          },
-          'onStateChange': (event: any) => {
-            if (event.data === (window as any).YT.PlayerState.PLAYING) {
-              // iOS: đảm bảo unmute sau mỗi lần play
-              playerRef.current?.unMute?.();
-              playerRef.current?.setVolume?.(100);
-              setIsPlaying(true);
-              setDuration(playerRef.current.getDuration());
-              startProgressLoop();
-            } else if (event.data === (window as any).YT.PlayerState.PAUSED) {
-              setIsPlaying(false);
-            } else if (event.data === (window as any).YT.PlayerState.ENDED) {
-              playNext();
-            }
-          }
-        }
-      });
-    } catch (e) {
-      console.error('YT Error:', e);
-    }
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: 'command', func, args: args || [] }),
+        '*'
+      );
+    } catch {}
   };
 
   const startProgressLoop = () => {
-    if (progressInterval.current) clearInterval(progressInterval.current);
+    stopProgressLoop();
     progressInterval.current = setInterval(() => {
-      if (playerRef.current && playerRef.current.getCurrentTime) {
-        setCurrentTime(playerRef.current.getCurrentTime());
+      // Yêu cầu thông tin từ iframe mỗi giây
+      sendCommand('getCurrentTime');
+      sendCommand('getDuration');
+      // Lấy từ player API trực tiếp nếu có
+      if (playerRef.current?.getCurrentTime) {
+        const t = playerRef.current.getCurrentTime();
+        const d = playerRef.current.getDuration();
+        if (t > 0) setCurrentTime(t);
+        if (d > 0) setDuration(d);
       }
-    }, 1000);
+    }, 500);
   };
 
-  // Background Audio & Lock Screen Controls
-  useEffect(() => {
-    if ('mediaSession' in navigator && currentVideo) {
-      navigator.mediaSession.metadata = new window.MediaMetadata({
-        title: currentVideo.title,
-        artist: currentVideo.channelTitle,
-        artwork: [
-          { src: currentVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }
-        ]
-      });
-
-      navigator.mediaSession.setActionHandler('play', () => {
-        setIsPlaying(true);
-        playerRef.current?.playVideo();
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        setIsPlaying(false);
-        playerRef.current?.pauseVideo();
-      });
-      navigator.mediaSession.setActionHandler('previoustrack', playPrev);
-      navigator.mediaSession.setActionHandler('nexttrack', playNext);
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime !== undefined) {
-          handleSeek(details.seekTime);
-        }
-      });
+  const stopProgressLoop = () => {
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+      progressInterval.current = null;
     }
-  }, [currentVideo, isPlaying]);
+  };
 
-  const playVideo = (video: Video, list?: Video[]) => {
+  // Init YT Player object (song song với iframe approach)
+  useEffect(() => {
+    const tryInit = () => {
+      if (playerRef.current || !(window as any).YT?.Player) return;
+      const el = document.getElementById('yt-hidden-player');
+      if (!el) return;
+      try {
+        playerRef.current = new (window as any).YT.Player('yt-hidden-player', {
+          events: {
+            onReady: (e: any) => {
+              setPlayerReady(true);
+              e.target.unMute();
+              e.target.setVolume(100);
+              if (pendingVideoRef.current) {
+                e.target.loadVideoById(pendingVideoRef.current);
+                pendingVideoRef.current = null;
+              }
+            },
+            onStateChange: (e: any) => {
+              if (e.data === 1) {
+                playerRef.current?.unMute?.();
+                playerRef.current?.setVolume?.(100);
+                setIsPlaying(true);
+                setDuration(playerRef.current?.getDuration?.() || 0);
+                startProgressLoop();
+              } else if (e.data === 2) {
+                setIsPlaying(false);
+                stopProgressLoop();
+              } else if (e.data === 0) {
+                stopProgressLoop();
+                playNextRef.current?.();
+              }
+            }
+          }
+        });
+      } catch {}
+    };
+
+    (window as any).onYouTubeIframeAPIReady = tryInit;
+    const iv = setInterval(() => {
+      if ((window as any).YT?.Player) { tryInit(); clearInterval(iv); }
+    }, 300);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Media Session (Lock Screen Controls)
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentVideo) return;
+    navigator.mediaSession.metadata = new window.MediaMetadata({
+      title: currentVideo.title,
+      artist: currentVideo.channelTitle,
+      artwork: [{ src: currentVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }]
+    });
+    navigator.mediaSession.setActionHandler('play', () => {
+      playerRef.current?.playVideo?.();
+      sendCommand('playVideo');
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+      playerRef.current?.pauseVideo?.();
+      sendCommand('pauseVideo');
+    });
+    navigator.mediaSession.setActionHandler('nexttrack', () => playNextRef.current?.());
+    navigator.mediaSession.setActionHandler('previoustrack', () => playPrevRef.current?.());
+  }, [currentVideo]);
+
+  const playVideo = useCallback((video: Video, list?: Video[]) => {
     if (list) setPlaylist(list);
     setCurrentVideo(video);
-    setIsPlaying(true);
     setCurrentTime(0);
-    
+    setDuration(0);
+    setIsPlaying(true);
+
+    // iOS: gọi unMute + setVolume TRONG cùng user gesture này
     if (playerRef.current?.loadVideoById) {
-      // iOS fix: unMute + setVolume phải được gọi trong cùng user gesture
       playerRef.current.unMute?.();
       playerRef.current.setVolume?.(100);
       playerRef.current.loadVideoById(video.id);
+    } else if (playerReady) {
+      sendCommand('unMute');
+      sendCommand('setVolume', [100]);
+      sendCommand('loadVideoById', [{ videoId: video.id }]);
     } else {
-      // Fallback: khởi tạo player nếu chưa sẵn sàng, rồi thử lại
-      const YT = (window as any).YT;
-      if (YT && YT.Player) {
-        initPlayer();
-        setTimeout(() => {
-          if (playerRef.current?.loadVideoById) {
-            playerRef.current.unMute?.();
-            playerRef.current.setVolume?.(100);
-            playerRef.current.loadVideoById(video.id);
-          }
-        }, 800);
-      }
+      // Player chưa sẵn sàng — lưu lại để phát sau
+      pendingVideoRef.current = video.id;
     }
-  };
+  }, [playerReady]);
 
-  const togglePlay = () => {
-    if (!playerRef.current) return;
+  const togglePlay = useCallback(() => {
     if (isPlaying) {
-      playerRef.current.pauseVideo();
+      playerRef.current?.pauseVideo?.();
+      sendCommand('pauseVideo');
+      setIsPlaying(false);
     } else {
-      // iOS fix: luôn unMute trong user gesture trước khi play
-      playerRef.current.unMute?.();
-      playerRef.current.setVolume?.(100);
-      playerRef.current.playVideo();
+      // iOS: unMute trong user gesture
+      playerRef.current?.unMute?.();
+      playerRef.current?.setVolume?.(100);
+      playerRef.current?.playVideo?.();
+      sendCommand('unMute');
+      sendCommand('setVolume', [100]);
+      sendCommand('playVideo');
+      setIsPlaying(true);
     }
-  };
+  }, [isPlaying]);
 
-  const playNext = () => {
-    if (playlist.length === 0) return;
-    const idx = playlist.findIndex(v => v.id === currentVideo?.id);
-    playVideo(playlist[(idx + 1) % playlist.length]);
-  };
+  const playNext = useCallback(() => {
+    setPlaylist(pl => {
+      setCurrentVideo(cv => {
+        if (!cv || pl.length === 0) return cv;
+        const idx = pl.findIndex(v => v.id === cv.id);
+        const next = pl[(idx + 1) % pl.length];
+        setTimeout(() => playVideo(next, pl), 0);
+        return cv;
+      });
+      return pl;
+    });
+  }, [playVideo]);
 
-  const playPrev = () => {
-    if (playlist.length === 0) return;
-    const idx = playlist.findIndex(v => v.id === currentVideo?.id);
-    playVideo(playlist[(idx - 1 + playlist.length) % playlist.length]);
-  };
+  const playPrev = useCallback(() => {
+    setPlaylist(pl => {
+      setCurrentVideo(cv => {
+        if (!cv || pl.length === 0) return cv;
+        const idx = pl.findIndex(v => v.id === cv.id);
+        const prev = pl[(idx - 1 + pl.length) % pl.length];
+        setTimeout(() => playVideo(prev, pl), 0);
+        return cv;
+      });
+      return pl;
+    });
+  }, [playVideo]);
+
+  // Refs để dùng trong closures
+  const playNextRef2 = useRef(playNext);
+  const playPrevRef = useRef(playPrev);
+  useEffect(() => { playNextRef2.current = playNext; }, [playNext]);
+  useEffect(() => { playPrevRef.current = playPrev; }, [playPrev]);
+  useEffect(() => { playNextRef.current = playNext; }, [playNext]);
 
   const handleSeek = (val: number) => {
     setCurrentTime(val);
-    if (playerRef.current?.seekTo) {
-      playerRef.current.seekTo(val, true);
-    }
+    playerRef.current?.seekTo?.(val, true);
+    sendCommand('seekTo', [val, true]);
   };
 
-
   const handleLoginSuccess = (userData: any) => {
-    if (!userData?.api_token) {
-      localStorage.removeItem('vteen_user');
-      return;
-    }
+    if (!userData?.api_token) { localStorage.removeItem('vteen_user'); return; }
     setUser(userData);
     localStorage.setItem('vteen_user', JSON.stringify(userData));
   };
@@ -223,20 +293,18 @@ function App() {
     setWatchingSlug(null);
   };
 
-  const handleWatch = (slug: string) => {
-    setWatchingSlug(slug);
-  };
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className="h-[100dvh] text-white relative overflow-hidden bg-transparent">
       <UniverseBackground />
-      
+
       {!user ? (
         <LoginScreen onLoginSuccess={handleLoginSuccess} />
       ) : (
         <>
           <AnimatePresence mode="wait">
-            <motion.main 
+            <motion.main
               key={activeTab}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -244,68 +312,79 @@ function App() {
               transition={{ duration: 0.2 }}
               className="h-full overflow-y-auto overscroll-none pb-32"
             >
-              {activeTab === 'home' && <HomeScreen onWatch={handleWatch} />}
+              {activeTab === 'home' && <HomeScreen onWatch={(slug: string) => setWatchingSlug(slug)} />}
               {activeTab === 'tube' && (
                 <ErrorBoundary>
-                  <TubeScreen 
-                    currentVideo={currentVideo}
-                    playVideo={playVideo}
-                  />
+                  <TubeScreen currentVideo={currentVideo} playVideo={playVideo} />
                 </ErrorBoundary>
               )}
               {activeTab === 'profile' && (
-                <ProfileScreen 
-                  user={user} 
-                  onLogout={handleLogout} 
-                  onWatch={handleWatch} 
-                />
+                <ProfileScreen user={user} onLogout={handleLogout} onWatch={(slug: string) => setWatchingSlug(slug)} />
               )}
             </motion.main>
           </AnimatePresence>
 
-          {/* SoundCloud-style Bottom Player */}
+          {/* Mini Player Bar */}
           <AnimatePresence>
             {currentVideo && !watchingSlug && (
-              <motion.div 
-                initial={{ y: 100, opacity: 0 }} 
-                animate={{ y: 0, opacity: 1 }} 
+              <motion.div
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 100, opacity: 0 }}
                 className="fixed bottom-[5.8rem] left-0 right-0 z-[60] px-3 pointer-events-none"
               >
-                <div className="bg-[#0f141f] border border-white/5 shadow-[0_-15px_50px_rgba(0,0,0,0.6)] overflow-hidden rounded-2xl pointer-events-auto">
-                  {/* Progress Line at Top */}
-                  <div className="h-0.5 w-full bg-white/5 relative">
-                    <div 
-                      className="absolute h-full bg-primary shadow-[0_0_8px_#06b6d4]" 
-                      style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+                <div className="bg-[#0f141f] border border-white/5 shadow-[0_-15px_50px_rgba(0,0,0,0.6)] overflow-hidden rounded-2xl pointer-events-auto relative">
+                  {/* Thanh tiến độ clickable */}
+                  <div
+                    className="h-1 w-full bg-white/10 relative cursor-pointer group"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const ratio = (e.clientX - rect.left) / rect.width;
+                      handleSeek(ratio * (duration || 0));
+                    }}
+                  >
+                    <div
+                      className="absolute h-full bg-primary shadow-[0_0_8px_#06b6d4] transition-all"
+                      style={{ width: `${progress}%` }}
+                    />
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ left: `calc(${progress}% - 6px)` }}
                     />
                   </div>
-                  
-                  <div className="flex items-center justify-between p-3 gap-3">
+
+                  <div className="flex items-center justify-between px-3 py-2 gap-3">
+                    {/* Thumbnail + Info */}
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="relative w-10 h-10 flex-shrink-0">
-                        <img 
-                          src={currentVideo.thumbnail} 
-                          className={`w-full h-full rounded-lg object-cover border border-white/10 ${isPlaying ? 'animate-pulse' : ''}`} 
+                      <div className="relative w-9 h-9 flex-shrink-0">
+                        <img
+                          src={currentVideo.thumbnail}
+                          className={`w-full h-full rounded-lg object-cover border border-white/10 ${isPlaying ? 'animate-[spin_8s_linear_infinite]' : ''}`}
+                          style={{ borderRadius: '50%' }}
                         />
+                        {isPlaying && (
+                          <div className="absolute inset-0 rounded-full border-2 border-primary/50 animate-ping" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="overflow-hidden whitespace-nowrap">
-                          <h4 className={`text-[13px] font-bold text-white truncate ${currentVideo.title.length > 30 ? 'animate-marquee' : ''}`}>
-                            {currentVideo.title}
-                          </h4>
-                        </div>
-                        <p className="text-[10px] text-primary/80 font-medium truncate">{currentVideo.channelTitle}</p>
+                        <h4 className="text-[12px] font-bold text-white truncate">{currentVideo.title}</h4>
+                        <p className="text-[10px] text-primary/80 truncate">{currentVideo.channelTitle}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-5 pr-2">
-                      <button onClick={playPrev} className="text-white/40 hover:text-white transition-colors">
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                    {/* Time Display */}
+                    <span className="text-[9px] text-white/40 font-mono flex-shrink-0">
+                      {fmt(currentTime)}/{fmt(duration)}
+                    </span>
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <button onClick={playPrev} className="text-white/40 active:text-white transition-colors p-1">
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
                       </button>
-                      <button 
-                        onClick={togglePlay} 
-                        className="w-9 h-9 bg-white text-black rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                      <button
+                        onClick={togglePlay}
+                        className="w-9 h-9 bg-white text-black rounded-full flex items-center justify-center active:scale-90 transition-transform shadow-lg"
                       >
                         {isPlaying ? (
                           <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -313,18 +392,11 @@ function App() {
                           <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 ml-0.5"><path d="M8 5v14l11-7z"/></svg>
                         )}
                       </button>
-                      <button onClick={playNext} className="text-white/40 hover:text-white transition-colors">
+                      <button onClick={playNext} className="text-white/40 active:text-white transition-colors p-1">
                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
                       </button>
                     </div>
                   </div>
-
-                  {/* Hidden Seek Control Area */}
-                  <input 
-                    type="range" min="0" max={duration || 100} value={currentTime || 0}
-                    onChange={(e) => handleSeek(parseFloat(e.target.value))}
-                    className="absolute top-0 left-0 w-full h-1 opacity-0 z-20 cursor-pointer"
-                  />
                 </div>
               </motion.div>
             )}
@@ -339,31 +411,47 @@ function App() {
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 className="fixed inset-0 z-[1000]"
               >
-                <WatchScreen 
-                  slug={watchingSlug} 
-                  onBack={() => setWatchingSlug(null)} 
-                  onUnauthorized={handleLogout}
-                />
+                <WatchScreen slug={watchingSlug} onBack={() => setWatchingSlug(null)} onUnauthorized={handleLogout} />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {!watchingSlug && (
-            <BottomTabs activeTab={activeTab} onTabChange={setActiveTab} />
-          )}
+          {!watchingSlug && <BottomTabs activeTab={activeTab} onTabChange={setActiveTab} />}
         </>
       )}
 
-      {/* YouTube Player Containers - iOS cần player không bị ẩn hoàn toàn */}
-      <div 
-        className="fixed pointer-events-none z-[-1]"
-        style={{ bottom: 0, right: 0, width: 1, height: 1, overflow: 'hidden' }}
+      {/*
+        YouTube iframe player thực sự hiển thị nhưng clip bằng clip-path.
+        iOS Safari yêu cầu iframe phải có kích thước thật và KHÔNG bị opacity/visibility hidden.
+        enablejsapi=1 + origin cho phép postMessage.
+      */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          right: 0,
+          width: 2,
+          height: 2,
+          overflow: 'hidden',
+          zIndex: -1,
+          pointerEvents: 'none',
+        }}
         aria-hidden="true"
       >
-        <div id="yt-player-container" style={{ width: 1, height: 1 }}></div>
+        <iframe
+          id="yt-hidden-player"
+          ref={iframeRef}
+          width="2"
+          height="2"
+          src={`https://www.youtube.com/embed/?enablejsapi=1&playsinline=1&controls=0&autoplay=0&mute=0&origin=${encodeURIComponent(window.location.origin)}`}
+          allow="autoplay; encrypted-media"
+          allowFullScreen={false}
+          style={{ border: 'none', display: 'block' }}
+          title="yt-player"
+        />
       </div>
     </div>
-  )
+  );
 }
 
 export default App
