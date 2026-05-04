@@ -43,8 +43,7 @@ function App() {
   const playRetryTimersRef = useRef<number[]>([]);
   const ytSendPlayRef = useRef<(video: Video) => void>(() => {});
   const iframeLoadGenRef = useRef(0);
-  const embedOrigin =
-    typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+
   const bootVideoId = 'jfKfPfyJRdk';
   const embedVideoId = currentVideo?.id ?? bootVideoId;
   const iframeSrc = useMemo(() => {
