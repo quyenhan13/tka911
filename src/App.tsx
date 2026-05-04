@@ -48,7 +48,6 @@ function App() {
   const embedVideoId = currentVideo?.id ?? bootVideoId;
   const iframeSrc = useMemo(() => {
     const id = currentVideo?.id ?? bootVideoId;
-    const ap = currentVideo ? 1 : 0;
     // Dùng Proxy Player trên server để lách luật YouTube Error 153.
     // Proxy này (yt_player.php) sẽ có Referrer là vteen.shop nên YouTube sẽ cho phép phát nhạc.
     return `https://vteen.shop/yt_player.php?id=${id}`;
