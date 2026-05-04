@@ -426,7 +426,6 @@ function App() {
                     src={iframeSrc}
                     allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
                     allowFullScreen
-                    referrerPolicy="strict-origin-when-cross-origin"
                     title="yt-player"
                     className={
                       tubeExpanded && currentVideo
