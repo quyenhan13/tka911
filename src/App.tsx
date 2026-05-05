@@ -47,6 +47,7 @@ function App() {
   const bootVideoId = 'jfKfPfyJRdk';
   const embedVideoId = currentVideo?.id ?? bootVideoId;
   
+  const iframeSrc = useMemo(() => {
     const id = currentVideo?.id ?? bootVideoId;
     // Quan trọng: Chỉ đổi URL lần đầu tiên. Các lần sau sẽ dùng postMessage để đổi bài.
     // Điều này giúp giữ cho iframe không bị load lại, tránh bị iOS tắt tiếng.
