@@ -47,12 +47,11 @@ function App() {
   const bootVideoId = 'jfKfPfyJRdk';
   const embedVideoId = currentVideo?.id ?? bootVideoId;
   
-  const iframeSrc = useMemo(() => {
     const id = currentVideo?.id ?? bootVideoId;
-    // Dùng Proxy Player trên server để lách luật YouTube Error 153.
-    // Proxy này (yt_player.php) sẽ có Referrer là vteen.shop nên YouTube sẽ cho phép phát nhạc.
+    // Quan trọng: Chỉ đổi URL lần đầu tiên. Các lần sau sẽ dùng postMessage để đổi bài.
+    // Điều này giúp giữ cho iframe không bị load lại, tránh bị iOS tắt tiếng.
     return `https://vteen.shop/yt_player.php?id=${id}`;
-  }, [currentVideo]);
+  }, []); // Bỏ dependency currentVideo để src cố định
 
   // Send postMessage to YouTube iframe
   const sendCommand = useCallback((func: string, args?: any[]) => {
@@ -543,7 +542,6 @@ function App() {
           {/* Hidden YouTube iframe (Luôn tồn tại để giữ nhạc chạy xuyên suốt) */}
           {currentVideo && (
             <iframe
-              key={embedVideoId}
               ref={iframeRef}
               src={iframeSrc}
               allow="autoplay; encrypted-media; fullscreen"
