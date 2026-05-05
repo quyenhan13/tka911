@@ -44,17 +44,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
-        // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-        // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.
+        // App chuẩn bị thoát -> Kích hoạt trình phát im lặng ngay lập tức
+        try? AVAudioSession.sharedInstance().setActive(true)
+        silentPlayer?.play()
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {
-        // Xin hệ thống cấp thêm thời gian chạy ngầm để không bị ngắt nhạc ngay lập tức
+        // Giữ app sống thêm một thời gian
         var backgroundTask: UIBackgroundTaskIdentifier = .invalid
         backgroundTask = application.beginBackgroundTask {
             application.endBackgroundTask(backgroundTask)
             backgroundTask = .invalid
         }
+        // Chơi nhạc im lặng liên tục
+        silentPlayer?.play()
     }
 
     func applicationWillEnterForeground(_ application: UIApplication) {
