@@ -6,17 +6,40 @@ import AVFoundation
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    var silentPlayer: AVAudioPlayer?
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Cấu hình Audio Session để cho phép chạy nền
         let audioSession = AVAudioSession.sharedInstance()
         do {
-            try audioSession.setCategory(.playback, mode: .default, options: [])
+            try audioSession.setCategory(.playback, mode: .default, options: [.allowBluetooth, .allowAirPlay])
             try audioSession.setActive(true)
         } catch {
-            print("Setting category to AVAudioSessionCategoryPlayback failed.")
+            print("AVAudioSession setup failed")
         }
+
+        // Mẹo Native: Phát một đoạn âm thanh im lặng để giữ app luôn sống
+        setupSilentPlayer()
+        
         return true
+    }
+
+    private func setupSilentPlayer() {
+        // Tạo một file âm thanh im lặng cực nhỏ (wav 16-bit)
+        let SILENT_WAV_DATA: [UInt8] = [
+            0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6d, 0x74, 0x20,
+            0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x44, 0xac, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00,
+            0x02, 0x00, 0x10, 0x00, 0x64, 0x61, 0x74, 0x61, 0x00, 0x00, 0x00, 0x00
+        ]
+        let data = Data(SILENT_WAV_DATA)
+        do {
+            silentPlayer = try AVAudioPlayer(data: data)
+            silentPlayer?.numberOfLoops = -1 // Lặp vô tận
+            silentPlayer?.volume = 0.01
+            silentPlayer?.prepareToPlay()
+            silentPlayer?.play()
+        } catch {
+            print("Silent player setup failed")
+        }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
