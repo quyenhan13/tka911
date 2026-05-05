@@ -309,9 +309,21 @@ function App() {
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // Mẹo giữ nhịp âm thanh cho iOS (Background Audio Hack)
+  const silentAudioSrc = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==";
+
   return (
     <div className="h-[100dvh] text-white relative overflow-hidden bg-transparent">
       <UniverseBackground />
+      
+      {/* Hidden native audio to keep session alive on iOS */}
+      <audio 
+        src={silentAudioSrc} 
+        autoPlay 
+        loop 
+        muted={!isPlaying}
+        style={{ display: 'none' }} 
+      />
 
       {!user ? (
         <LoginScreen onLoginSuccess={handleLoginSuccess} />

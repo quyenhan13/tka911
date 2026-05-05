@@ -25,8 +25,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {
-        // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
-        // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+        // Xin hệ thống cấp thêm thời gian chạy ngầm để không bị ngắt nhạc ngay lập tức
+        var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+        backgroundTask = application.beginBackgroundTask {
+            application.endBackgroundTask(backgroundTask)
+            backgroundTask = .invalid
+        }
     }
 
     func applicationWillEnterForeground(_ application: UIApplication) {
