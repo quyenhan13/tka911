@@ -45,7 +45,6 @@ function App() {
   const iframeLoadGenRef = useRef(0);
 
   const bootVideoId = 'jfKfPfyJRdk';
-  const embedVideoId = currentVideo?.id ?? bootVideoId;
   
   const iframeSrc = useMemo(() => {
     const id = currentVideo?.id ?? bootVideoId;
@@ -183,7 +182,6 @@ function App() {
     (video: Video, list?: Video[]) => {
       if (list) playlistRef.current = list;
       pendingPlayRef.current = video;
-      const sameTrack = currentVideo?.id === video.id;
       setCurrentVideo(video);
       setCurrentTime(0);
       setDuration(0);
