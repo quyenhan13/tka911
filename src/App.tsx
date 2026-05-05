@@ -524,31 +524,33 @@ function App() {
                     </button>
                   </div>
                 </div>
-
-                {/* Hidden YouTube iframe */}
-                <iframe
-                  key={embedVideoId}
-                  ref={iframeRef}
-                  src={iframeSrc}
-                  allow="autoplay; encrypted-media; fullscreen"
-                  title="yt-player"
-                  className="fixed bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none"
-                  onLoad={() => {
-                    const gen = ++iframeLoadGenRef.current;
-                    window.setTimeout(() => {
-                      if (gen !== iframeLoadGenRef.current) return;
-                      ytListeningRef.current = true;
-                      const pending = pendingPlayRef.current;
-                      if (pending) {
-                        pendingPlayRef.current = null;
-                        ytSendPlayRef.current(pending);
-                      }
-                    }, 400);
-                  }}
-                />
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Hidden YouTube iframe (Luôn tồn tại để giữ nhạc chạy xuyên suốt) */}
+          {currentVideo && (
+            <iframe
+              key={embedVideoId}
+              ref={iframeRef}
+              src={iframeSrc}
+              allow="autoplay; encrypted-media; fullscreen"
+              title="yt-player"
+              className="fixed bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none z-[-1]"
+              onLoad={() => {
+                const gen = ++iframeLoadGenRef.current;
+                window.setTimeout(() => {
+                  if (gen !== iframeLoadGenRef.current) return;
+                  ytListeningRef.current = true;
+                  const pending = pendingPlayRef.current;
+                  if (pending) {
+                    pendingPlayRef.current = null;
+                    ytSendPlayRef.current(pending);
+                  }
+                }, 400);
+              }}
+            />
+          )}
 
           <AnimatePresence>
             {watchingSlug && (
