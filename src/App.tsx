@@ -271,11 +271,24 @@ function App() {
       artist: currentVideo.channelTitle,
       artwork: [{ src: currentVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }]
     });
-    navigator.mediaSession.setActionHandler('play', togglePlay);
-    navigator.mediaSession.setActionHandler('pause', togglePlay);
+    const handlePlay = () => {
+      sendCommand('unMute');
+      sendCommand('setVolume', [100]);
+      sendCommand('playVideo');
+      setIsPlaying(true);
+    };
+
+    navigator.mediaSession.setActionHandler('play', handlePlay);
+    navigator.mediaSession.setActionHandler('pause', () => {
+      sendCommand('pauseVideo');
+      setIsPlaying(false);
+    });
     navigator.mediaSession.setActionHandler('nexttrack', () => playNextRef.current?.());
     navigator.mediaSession.setActionHandler('previoustrack', () => playPrevRef.current?.());
-  }, [currentVideo, togglePlay]);
+    
+    // Đảm bảo trạng thái luôn được cập nhật lên hệ thống
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+  }, [currentVideo, isPlaying, sendCommand]);
 
   const handleLoginSuccess = (userData: any) => {
     if (!userData?.api_token) { localStorage.removeItem('vteen_user'); return; }
