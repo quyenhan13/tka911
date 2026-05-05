@@ -189,13 +189,13 @@ function App() {
       setDuration(0);
       setIsPlaying(true);
       if (activeTab === 'tube') setTubeExpanded(true);
-      if (sameTrack && ytListeningRef.current) {
+      if (ytListeningRef.current) {
         ytSendPlay(video);
         return;
       }
-      ytListeningRef.current = false;
+      // Nếu chưa listening (lần đầu), nó sẽ tự chạy qua onLoad của iframe
     },
-    [ytSendPlay, activeTab, currentVideo?.id]
+    [ytSendPlay, activeTab]
   );
 
   useEffect(() => {
