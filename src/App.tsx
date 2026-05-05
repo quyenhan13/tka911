@@ -58,6 +58,10 @@ function App() {
   const sendCommand = useCallback((func: string, args?: any[]) => {
     if (!iframeRef.current?.contentWindow) return;
     try {
+      // Gửi lệnh theo định dạng đơn giản cho Proxy nhận
+      iframeRef.current.contentWindow.postMessage({ func, args: args || [] }, '*');
+      
+      // Vẫn gửi định dạng chuẩn của YouTube để phòng hờ
       iframeRef.current.contentWindow.postMessage(
         JSON.stringify({ event: 'command', func, args: args || [] }),
         '*'
@@ -80,7 +84,23 @@ function App() {
       try {
         // YT sends JSON string or object
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-        if (!data || !data.event) return;
+        // Xử lý bộ giao tiếp tùy chỉnh từ Proxy (VTEEN_PROGRESS)
+        if (data.type === 'VTEEN_PROGRESS') {
+          if (typeof data.currentTime === 'number') setCurrentTime(data.currentTime);
+          if (typeof data.duration === 'number') setDuration(data.duration);
+          
+          // Cập nhật trạng thái chơi nhạc từ proxy
+          if (data.state === 1) setIsPlaying(true);
+          else if (data.state === 2) setIsPlaying(false);
+          return;
+        }
+
+        if (data.type === 'VTEEN_STATE') {
+          if (data.state === 1) setIsPlaying(true);
+          else if (data.state === 2) setIsPlaying(false);
+          else if (data.state === 0) playNextRef.current?.();
+          return;
+        }
 
         if (data.event === 'listening') {
           ytListeningRef.current = true;
