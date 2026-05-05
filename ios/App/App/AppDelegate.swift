@@ -8,6 +8,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     var silentPlayer: AVAudioPlayer?
 
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Cấu hình Audio Session để cho phép chạy nền
         let audioSession = AVAudioSession.sharedInstance()
         do {
