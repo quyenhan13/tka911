@@ -155,21 +155,15 @@ function App() {
     (video: Video) => {
       playRetryTimersRef.current.forEach((t) => window.clearTimeout(t));
       playRetryTimersRef.current = [];
-
       const perform = () => {
         sendCommand('unMute');
         sendCommand('setVolume', [100]);
         sendCommand('loadVideoById', [video.id]);
         sendCommand('playVideo');
-        sendCommand('getDuration');
-        sendCommand('getCurrentTime');
       };
 
+      // Chỉ gọi 1 lần duy nhất để tránh bị ngắt nhạc (vấp)
       perform();
-      [120, 380, 850, 1600, 2600].forEach((ms) => {
-        const timer = window.setTimeout(perform, ms);
-        playRetryTimersRef.current.push(timer);
-      });
     },
     [sendCommand]
   );
