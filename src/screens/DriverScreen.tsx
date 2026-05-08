@@ -351,7 +351,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
             className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex flex-col items-center justify-center p-10"
           >
             <div className="w-20 h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-6" />
-            <h3 className="text-xl font-black text-white tracking-widest uppercase italic">Đang tải lên...</h3>
+            <h3 className="text-xl font-black text-white tracking-widest uppercase italic">Đang tải lên... {uploadProgress > 0 && `${uploadProgress}%`}</h3>
             <p className="text-[10px] font-bold text-white/40 mt-2">VUI LÒNG GIỮ ỨNG DỤNG LUÔN MỞ</p>
           </motion.div>
         )}
