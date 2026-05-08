@@ -15,19 +15,19 @@ export default defineConfig({
         target: 'http://localhost',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => `/vteen${path}`,
+        rewrite: (path) => path,
       },
       '/embed.php': {
         target: 'http://localhost',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => `/vteen${path}`,
+        rewrite: (path) => path,
       },
       '/uploads': {
         target: 'http://localhost',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => `/vteen${path}`,
+        rewrite: (path) => path,
       }
     }
   }

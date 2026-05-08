@@ -6,6 +6,7 @@ import WatchScreen from './screens/WatchScreen'
 import LoginScreen from './screens/LoginScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import TubeScreen from './screens/TubeScreen'
+import DriverScreen from './screens/DriverScreen'
 import UniverseBackground from './components/UniverseBackground'
 import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
@@ -328,6 +329,11 @@ function App() {
               {activeTab === 'tube' && (
                 <ErrorBoundary>
                   <TubeScreen currentVideo={currentVideo} playVideo={playVideo} />
+                </ErrorBoundary>
+              )}
+              {activeTab === 'driver' && (
+                <ErrorBoundary>
+                  <DriverScreen user={user} />
                 </ErrorBoundary>
               )}
               {activeTab === 'profile' && (
