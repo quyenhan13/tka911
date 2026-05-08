@@ -63,12 +63,12 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       const savedUser = localStorage.getItem('vteen_user');
       if (!savedUser) return;
       const apiToken = JSON.parse(savedUser)?.api_token;
-      
+
       const url = `${CONFIG.API_BASE_URL}/driver_list.php?account=${activeAccount}&q=${encodeURIComponent(searchQuery)}&api_token=${apiToken}`;
       const response = await fetch(url);
       const result = await response.json();
       console.log('Driver API Result:', result);
-      
+
       if (result.status === 'success') {
         setFiles(result.data);
         if (result.accounts) setAccounts(['all', ...result.accounts]);
@@ -85,18 +85,19 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
+    setUploadProgress(0);
     try {
       const savedUser = localStorage.getItem('vteen_user');
       const apiToken = JSON.parse(savedUser || '{}')?.api_token;
-      
+
       const formData = new FormData();
       formData.append('file_upload', file);
-      
+
       const response = await fetch(`${CONFIG.API_BASE_URL}/driver_list.php?account=${activeAccount}&api_token=${apiToken}`, {
         method: 'POST',
         body: formData
       });
-      
+
       const result = await response.json();
       if (result.status === 'success') {
         fetchFiles();
@@ -111,21 +112,21 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   };
 
   const getFileIcon = (mimeType: string) => {
-    if (mimeType.includes('folder')) return { 
-      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#fbbf24]"><path d="M20 18a2 2 0 002-2V6a2 2 0 00-2-2H9l-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2h16z"/></svg>, 
-      color: '#fbbf24', label: 'FOLDER' 
+    if (mimeType.includes('folder')) return {
+      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#fbbf24]"><path d="M20 18a2 2 0 002-2V6a2 2 0 00-2-2H9l-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2h16z" /></svg>,
+      color: '#fbbf24', label: 'FOLDER'
     };
-    if (mimeType.includes('audio')) return { 
-      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#10b981]"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>, 
-      color: '#10b981', label: 'AUDIO' 
+    if (mimeType.includes('audio')) return {
+      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#10b981]"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>,
+      color: '#10b981', label: 'AUDIO'
     };
-    if (mimeType.includes('video')) return { 
-      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#8b5cf6]"><path d="M23 7l-7 5 7 5V7zM1 5h14v14H1V5z"/></svg>, 
-      color: '#8b5cf6', label: 'VIDEO' 
+    if (mimeType.includes('video')) return {
+      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#8b5cf6]"><path d="M23 7l-7 5 7 5V7zM1 5h14v14H1V5z" /></svg>,
+      color: '#8b5cf6', label: 'VIDEO'
     };
-    return { 
-      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#3b82f6]"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM13 3l5 5h-5V3z"/></svg>, 
-      color: '#3b82f6', label: 'FILE' 
+    return {
+      icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#3b82f6]"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM13 3l5 5h-5V3z" /></svg>,
+      color: '#3b82f6', label: 'FILE'
     };
   };
 
@@ -137,7 +138,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   return (
     <div className="flex flex-col h-full relative overflow-hidden bg-transparent">
       {/* Header */}
-      <header 
+      <header
         className="sticky top-0 z-50 px-6 pb-4 flex flex-col border-b border-white/5 bg-[#05070a]/40 backdrop-blur-3xl"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.5rem)' }}
       >
@@ -158,22 +159,22 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
         {/* Quota bar - Glassmorphism */}
         {quota && (
           <div className="flex items-center justify-between bg-white/3 rounded-2xl px-4 py-3 border border-white/5 shadow-inner">
-             <div className="flex flex-col flex-1 mr-4">
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-[8px] font-black text-white/30 uppercase tracking-tighter">BỘ NHỚ TRỰC TUYẾN</span>
-                  <span className="text-[9px] font-black text-primary/80">{quota.percent}% • {quota.usage}</span>
-                </div>
-                <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${quota.percent}%` }}
-                    className="h-full bg-gradient-to-r from-primary to-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.6)]" 
-                  />
-                </div>
-             </div>
-             <div className="w-10 h-10 rounded-full border-2 border-primary/20 flex items-center justify-center text-[11px] font-black text-primary">
-                {Math.round(quota.percent)}
-             </div>
+            <div className="flex flex-col flex-1 mr-4">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-[8px] font-black text-white/30 uppercase tracking-tighter">BỘ NHỚ TRỰC TUYẾN</span>
+                <span className="text-[9px] font-black text-primary/80">{quota.percent}% • {quota.usage}</span>
+              </div>
+              <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${quota.percent}%` }}
+                  className="h-full bg-gradient-to-r from-primary to-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.6)]"
+                />
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-full border-2 border-primary/20 flex items-center justify-center text-[11px] font-black text-primary">
+              {Math.round(quota.percent)}
+            </div>
           </div>
         )}
       </header>
@@ -185,78 +186,77 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
             <button
               key={acc}
               onClick={() => setActiveAccount(acc)}
-              className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                activeAccount === acc 
-                  ? 'bg-primary text-black shadow-[0_8px_20px_rgba(6,182,212,0.3)] scale-[1.02]' 
+              className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeAccount === acc
+                  ? 'bg-primary text-black shadow-[0_8px_20px_rgba(6,182,212,0.3)] scale-[1.02]'
                   : 'text-white/30 hover:text-white/60'
-              }`}
+                }`}
             >
               {acc === 'all' ? (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z" /></svg>
               ) : (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><path d="M22 12L2 12M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><path d="M22 12L2 12M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z" /></svg>
               )}
               {acc === 'all' ? 'Tất cả' : `Drive ${idx}`}
             </button>
           ))}
         </div>
         {isAdmin && (
-           <>
-             <input 
-               type="file" 
-               id="token-upload" 
-               className="hidden" 
-               accept=".json"
-               onChange={async (e) => {
-                 const file = e.target.files?.[0];
-                 if (!file) return;
-                 const formData = new FormData();
-                 formData.append('token_upload', file);
-                 setLoading(true);
-                 try {
-                   const savedUser = localStorage.getItem('vteen_user');
-                   const apiToken = JSON.parse(savedUser || '{}')?.api_token;
-                   await fetch(`${CONFIG.API_BASE_URL}/driver_list.php?api_token=${apiToken}`, {
-                     method: 'POST',
-                     body: formData
-                   });
-                   fetchFiles();
-                 } catch (err) {
-                   console.error('Upload token error:', err);
-                 } finally {
-                   setLoading(false);
-                 }
-               }}
-             />
-             <button 
-               onClick={() => document.getElementById('token-upload')?.click()}
-               className="w-12 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-white/20 hover:bg-primary/20 hover:text-primary transition-all active:scale-90"
-               title="Thêm ổ đĩa mới"
-             >
-               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5"><path d="M12 5v14M5 12h14"/></svg>
-             </button>
-           </>
+          <>
+            <input
+              type="file"
+              id="token-upload"
+              className="hidden"
+              accept=".json"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('token_upload', file);
+                setLoading(true);
+                try {
+                  const savedUser = localStorage.getItem('vteen_user');
+                  const apiToken = JSON.parse(savedUser || '{}')?.api_token;
+                  await fetch(`${CONFIG.API_BASE_URL}/driver_list.php?api_token=${apiToken}`, {
+                    method: 'POST',
+                    body: formData
+                  });
+                  fetchFiles();
+                } catch (err) {
+                  console.error('Upload token error:', err);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            />
+            <button
+              onClick={() => document.getElementById('token-upload')?.click()}
+              className="w-12 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-white/20 hover:bg-primary/20 hover:text-primary transition-all active:scale-90"
+              title="Thêm ổ đĩa mới"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+          </>
         )}
       </div>
 
       {/* Search Bar - Cosmic Pill Style */}
       <div className="px-6 mt-5">
         <form onSubmit={(e) => { e.preventDefault(); fetchFiles(); }} className="relative group">
-          <input 
-            type="text" 
-            placeholder="Tìm kiếm tệp trong vũ trụ..." 
+          <input
+            type="text"
+            placeholder="Tìm kiếm tệp trong vũ trụ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-[#18181b]/60 border border-white/5 rounded-2xl py-4 pl-12 pr-14 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-primary/50 focus:bg-[#18181b]/80 transition-all backdrop-blur-md"
           />
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5">
-              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {searchQuery && (
-              <button 
+              <button
                 type="button"
                 onClick={() => { setSearchQuery(''); }}
                 className="w-8 h-8 flex items-center justify-center text-white/20 hover:text-white transition-colors"
@@ -266,7 +266,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
                 </svg>
               </button>
             )}
-            <button 
+            <button
               type="button"
               onClick={() => fetchFiles()}
               className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:bg-primary/20 hover:text-primary transition-all active:scale-90"
@@ -289,8 +289,8 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
               </svg>
             </div>
             <div className="text-center">
-               <p className="text-sm font-black uppercase tracking-widest">Không có dữ liệu</p>
-               <p className="text-[10px] font-bold mt-2 opacity-50">Thử làm mới hoặc kiểm tra ổ đĩa khác</p>
+              <p className="text-sm font-black uppercase tracking-widest">Không có dữ liệu</p>
+              <p className="text-[10px] font-bold mt-2 opacity-50">Thử làm mới hoặc kiểm tra ổ đĩa khác</p>
             </div>
           </div>
         ) : (
@@ -299,9 +299,9 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
               {files.map((file, idx) => {
                 const info = getFileIcon(file.mimeType);
                 const isGuest = file.description?.includes('GUEST_UPLOAD');
-                
+
                 return (
-                  <FileCard 
+                  <FileCard
                     key={file.id + idx}
                     file={file}
                     info={info}
@@ -320,10 +320,10 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       </div>
 
       {/* Floating Action Button - Tải lên */}
-      <input 
-        type="file" 
-        id="file-upload-main" 
-        className="hidden" 
+      <input
+        type="file"
+        id="file-upload-main"
+        className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) handleFileUpload(file);
@@ -343,7 +343,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       {/* Uploading Overlay */}
       <AnimatePresence>
         {uploading && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -356,9 +356,9 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
         )}
       </AnimatePresence>
 
-      <FileViewModal 
-        file={selectedFile} 
-        onClose={() => setSelectedFile(null)} 
+      <FileViewModal
+        file={selectedFile}
+        onClose={() => setSelectedFile(null)}
         formatThumbnail={formatThumbnail}
         getFileIcon={getFileIcon}
       />
@@ -379,34 +379,34 @@ const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: any) => 
 
   return (
     <AnimatePresence>
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[200] bg-[#05070a]/95 backdrop-blur-2xl flex items-center justify-center p-6"
       >
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.9, y: 50, opacity: 0 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.9, y: 50, opacity: 0 }}
           className="w-full max-w-lg bg-white/[0.03] border border-white/10 rounded-[3rem] overflow-hidden flex flex-col relative shadow-[0_50px_100px_rgba(0,0,0,0.8)]"
         >
           {/* Close Button */}
-          <button 
+          <button
             onClick={onClose}
             className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white z-50 transition-all"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-6 h-6"><path d="M6 18L18 6M6 6l12 12"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-6 h-6"><path d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
 
           <div className="p-8 pt-16 flex flex-col items-center text-center">
             {/* Preview Box */}
             <div className="w-full aspect-video bg-black/40 rounded-[2rem] border border-white/5 flex items-center justify-center overflow-hidden mb-8 relative group">
               {isImg ? (
-                <img 
-                  src={formatThumbnail(file.thumbnailLink)} 
-                  className="w-full h-full object-contain p-2" 
-                  alt="" 
+                <img
+                  src={formatThumbnail(file.thumbnailLink)}
+                  className="w-full h-full object-contain p-2"
+                  alt=""
                 />
               ) : (
                 <div className="scale-[2] opacity-50">{info.icon}</div>
@@ -415,14 +415,14 @@ const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: any) => 
             </div>
 
             <h2 className="text-2xl font-black text-white mb-2 leading-tight tracking-tight px-4">{file.name}</h2>
-            
+
             <div className="flex items-center gap-4 mb-10 text-white/40 font-bold text-xs uppercase tracking-widest">
               <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-primary" />{file.size}</span>
               <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-primary" />{file.modifiedTime}</span>
             </div>
 
             {/* Main Action Button */}
-            <button 
+            <button
               onClick={() => window.open(file.webContentLink || file.webViewLink, '_blank')}
               className="w-full bg-gradient-to-br from-primary to-cyan-500 text-black py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(6,182,212,0.4)] mb-8 hover:scale-[1.02] active:scale-95 transition-all"
             >
@@ -436,16 +436,16 @@ const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: any) => 
                 <div className="flex-1 bg-white/[0.03] border border-white/5 rounded-xl px-4 py-3 text-[10px] font-mono text-white/60 truncate">
                   {shareLink}
                 </div>
-                <button 
+                <button
                   onClick={copyToClipboard}
                   className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center text-white/40 hover:bg-primary hover:text-black transition-all"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                 </button>
               </div>
             </div>
 
-            <button 
+            <button
               onClick={onClose}
               className="mt-8 text-white/20 text-[10px] font-black uppercase tracking-[0.3em] hover:text-white transition-colors"
             >
@@ -471,7 +471,7 @@ const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDele
   };
 
   return (
-    <motion.div 
+    <motion.div
       ref={cardRef}
       onMouseMove={handleMouseMove}
       initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -482,38 +482,38 @@ const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDele
       className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-0 flex flex-col relative overflow-hidden group transition-all duration-500 hover:border-primary/40 hover:bg-white/[0.06] shadow-[0_15px_35px_rgba(0,0,0,0.3)] hover:shadow-[0_25px_50px_rgba(0,0,0,0.5),0_0_20px_rgba(6,182,212,0.1)]"
     >
       {/* Lighting effect (radial gradient) */}
-      <div 
+      <div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none z-10"
-        style={{ 
-          background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, rgba(6,182,212,0.12) 0%, transparent 60%)` 
+        style={{
+          background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, rgba(6,182,212,0.12) 0%, transparent 60%)`
         }}
       />
 
       {/* Admin Quick Actions */}
       {isAdmin && (
         <div className="absolute top-12 left-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0 z-30">
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
             className="w-9 h-9 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-xl backdrop-blur-md"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4.5 h-4.5"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4.5 h-4.5"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
           </button>
-          <button 
-            onClick={(e) => { 
-              e.stopPropagation(); 
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               navigator.clipboard.writeText(file.webViewLink || '');
               alert('Đã sao chép link!');
             }}
             className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 text-primary flex items-center justify-center hover:bg-primary hover:text-black transition-all shadow-xl backdrop-blur-md"
           >
-             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4.5 h-4.5"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4.5 h-4.5"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></svg>
           </button>
         </div>
       )}
 
       {/* Badges Area */}
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
-        <span 
+        <span
           className="text-[9px] font-black px-3 py-1.5 rounded-xl border backdrop-blur-2xl shadow-sm tracking-widest"
           style={{ backgroundColor: `${info.color}15`, borderColor: `${info.color}30`, color: info.color }}
         >
@@ -528,10 +528,10 @@ const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDele
       <div className="aspect-[4/3] w-full bg-[#0a0a0c] flex items-center justify-center overflow-hidden relative">
         {file.thumbnailLink ? (
           <>
-            <img 
-              src={formatThumbnail(file.thumbnailLink)} 
-              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-115" 
-              alt="" 
+            <img
+              src={formatThumbnail(file.thumbnailLink)}
+              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-115"
+              alt=""
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
           </>
@@ -540,10 +540,10 @@ const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDele
             {info.icon}
           </div>
         )}
-        
+
         {/* Animated Bottom Line */}
-        <motion.div 
-          className="absolute bottom-0 left-0 h-1 z-20 shadow-[0_0_15px_currentColor]" 
+        <motion.div
+          className="absolute bottom-0 left-0 h-1 z-20 shadow-[0_0_15px_currentColor]"
           initial={{ width: 0 }}
           whileHover={{ width: '100%' }}
           style={{ color: info.color, backgroundColor: info.color }}
@@ -555,33 +555,33 @@ const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDele
         <h4 className="text-[12px] font-black text-white/90 truncate group-hover:text-primary transition-colors duration-300 leading-tight">
           {file.name}
         </h4>
-        
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold text-white/30">{file.size}</span>
             <div className="w-1 h-1 rounded-full bg-white/10" />
             <span className="text-[10px] font-bold text-white/30">{file.modifiedTime.split(' ')[0]}</span>
           </div>
-          
+
           <div className="flex items-center gap-1.5 px-2 py-1 bg-white/[0.03] border border-white/5 rounded-lg">
-             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-2.5 h-2.5 text-primary/60">
-               <path d="M22 12L2 12M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
-             </svg>
-             <span className="text-[9px] font-black text-white/20 uppercase tracking-tighter">
-               {file.account_source}
-             </span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-2.5 h-2.5 text-primary/60">
+              <path d="M22 12L2 12M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z" />
+            </svg>
+            <span className="text-[9px] font-black text-white/20 uppercase tracking-tighter">
+              {file.account_source}
+            </span>
           </div>
         </div>
 
         {/* Buttons - Premium Style */}
         <div className="flex gap-2 mt-3">
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); onView(); }}
             className="flex-1 bg-white/[0.05] hover:bg-primary hover:text-black border border-white/10 hover:border-primary py-3 rounded-2xl text-[10px] font-black transition-all duration-300 active:scale-90 uppercase tracking-widest"
           >
             XEM NGAY
           </button>
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); window.open(file.webViewLink, '_blank'); }}
             className="w-12 bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 py-3 rounded-2xl flex items-center justify-center transition-all duration-300 active:scale-90 group/btn"
           >
