@@ -85,7 +85,6 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
-    setUploadProgress(0);
     try {
       const savedUser = localStorage.getItem('vteen_user');
       const apiToken = JSON.parse(savedUser || '{}')?.api_token;
