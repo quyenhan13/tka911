@@ -34,6 +34,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   const [accounts, setAccounts] = useState<string[]>(['all']);
   const [quota, setQuota] = useState<Quota | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
 
   const isAdmin = user?.role === 'admin';
