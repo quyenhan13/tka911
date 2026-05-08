@@ -534,25 +534,28 @@ function App() {
 
           {/* Hidden YouTube iframe (Luôn tồn tại để giữ nhạc chạy xuyên suốt) */}
           {currentVideo && (
-            <iframe
-              ref={iframeRef}
-              src={iframeSrc}
-              allow="autoplay; encrypted-media; fullscreen"
-              title="yt-player"
-              className="fixed bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none z-[-1]"
-              onLoad={() => {
-                const gen = ++iframeLoadGenRef.current;
-                window.setTimeout(() => {
-                  if (gen !== iframeLoadGenRef.current) return;
-                  ytListeningRef.current = true;
-                  const pending = pendingPlayRef.current;
-                  if (pending) {
-                    pendingPlayRef.current = null;
-                    ytSendPlayRef.current(pending);
-                  }
-                }, 400);
-              }}
-            />
+            <div className="fixed bottom-[-200px] right-0 pointer-events-none z-[-1]">
+              <iframe
+                ref={iframeRef}
+                src={iframeSrc}
+                allow="autoplay; encrypted-media; fullscreen"
+                title="yt-player"
+                className="w-[200px] h-[200px] opacity-[0.01]"
+                onLoad={() => {
+                  const gen = ++iframeLoadGenRef.current;
+                  window.setTimeout(() => {
+                    if (gen !== iframeLoadGenRef.current) return;
+                    ytListeningRef.current = true;
+                    console.log('YouTube Iframe Loaded, Gen:', gen);
+                    const pending = pendingPlayRef.current;
+                    if (pending) {
+                      pendingPlayRef.current = null;
+                      ytSendPlayRef.current(pending);
+                    }
+                  }, 600);
+                }}
+              />
+            </div>
           )}
 
           <AnimatePresence>
