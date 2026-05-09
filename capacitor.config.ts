@@ -16,7 +16,14 @@ const config: CapacitorConfig = {
       'vip.opstream17.com',
       '*.opstream17.com',
       'cdn.plyr.io',
-      'cdn.jsdelivr.net'
+      'cdn.jsdelivr.net',
+      'youtube.com',
+      '*.youtube.com',
+      'youtube-nocookie.com',
+      '*.youtube-nocookie.com',
+      'youtu.be',
+      '*.googlevideo.com',
+      '*.ytimg.com'
     ]
   },
   ios: {

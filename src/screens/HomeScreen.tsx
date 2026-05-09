@@ -88,11 +88,6 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
     return movies.filter((movie) => movie.display_name.toLowerCase().includes(keyword));
   }, [movies, searchTerm]);
 
-  const validHistory = useMemo(() => {
-    const validSlugs = new Set(movies.map((movie) => movie.slug));
-    return history.filter((item) => validSlugs.has(item.slug));
-  }, [history, movies]);
-
   const featuredMovie = searchTerm.trim() ? null : movies[0] ?? null;
   const paginationPages = useMemo(
     () => Array.from({ length: totalPages }, (_, index) => index + 1)
@@ -214,14 +209,14 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
         </section>
       )}
 
-      {validHistory.length > 0 && !searchTerm && (
+      {history.length > 0 && !searchTerm && (
         <section className="px-5">
           <div className="mb-3 flex items-end justify-between">
             <h3 className="text-[10px] font-black uppercase tracking-[0.24em] text-white/45">Tiep tuc xem</h3>
-            <span className="text-[10px] font-bold text-primary/70">{validHistory.length} phim</span>
+            <span className="text-[10px] font-bold text-primary/70">{history.length} phim</span>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-            {validHistory.map((item) => (
+            {history.map((item) => (
               <button
                 type="button"
                 key={item.slug}

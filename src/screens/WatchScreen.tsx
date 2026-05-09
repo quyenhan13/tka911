@@ -39,6 +39,28 @@ interface WatchScreenProps {
   onUnauthorized?: () => void;
 }
 
+const getYouTubeId = (value: string) => {
+  let id = value.trim();
+  try {
+    if (value.includes('v=')) {
+      id = new URL(value).searchParams.get('v') || value;
+    } else if (value.includes('embed/')) {
+      id = value.split('embed/')[1].split('?')[0];
+    } else if (value.includes('shorts/')) {
+      id = value.split('shorts/')[1].split('?')[0];
+    } else if (value.includes('youtu.be/')) {
+      id = value.split('youtu.be/')[1].split('?')[0];
+    }
+  } catch {
+    id = value;
+  }
+
+  return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
+};
+
+const buildYouTubeEmbedUrl = (id: string) =>
+  `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1`;
+
 const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
   const value = embedUrl?.trim();
   if (!value) return null;
@@ -49,6 +71,9 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
   const isYouTube = isYTId || hasYTKeyword || Boolean(host?.toLowerCase()?.includes('youtube'));
 
   if (isYouTube) {
+    const youtubeId = getYouTubeId(value);
+    if (youtubeId) return buildYouTubeEmbedUrl(youtubeId);
+
     let id = value;
     try {
       if (value.includes('v=')) {
@@ -255,7 +280,10 @@ const prepareServerOneHtml = (html: string) => {
   }
 
   // MỚI: Trả về mã HTML nội bộ cho YouTube
-  if (finalSrc.includes('youtube.com') || finalSrc.includes('youtu.be')) {
+  if (finalSrc.includes('youtube.com') || finalSrc.includes('youtu.be') || finalSrc.includes('youtube-nocookie.com')) {
+    const youtubeId = getYouTubeId(finalSrc);
+    if (youtubeId) return buildYouTubeEmbedUrl(youtubeId);
+
     let id = '';
     if (finalSrc.includes('v=')) {
       id = new URL(finalSrc).searchParams.get('v') || '';
@@ -553,7 +581,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       </div>
 
       {/* Video Player Area */}
-      <div className="relative z-50 w-full shrink-0 aspect-video max-h-[42vh] bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
+      <div className="relative z-50 h-[32vh] min-h-[240px] max-h-[58vh] w-full shrink-0 bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
         {currentEp && (webPlayer.videoSrc || webPlayer.html || webPlayer.src || currentEmbedSrc || playerLoading || playerError) ? (
           <>
             {webPlayer.videoSrc ? (
