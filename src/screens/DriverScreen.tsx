@@ -167,6 +167,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const isAdmin = user?.role === 'admin';
 
