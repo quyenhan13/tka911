@@ -35,6 +35,7 @@ function App() {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [tubeExpanded, setTubeExpanded] = useState(false);
+  const [tubeConnecting, setTubeConnecting] = useState(false);
   
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const progressInterval = useRef<any>(null);
@@ -95,14 +96,24 @@ function App() {
           if (typeof data.duration === 'number') setDuration(data.duration);
           
           // Cập nhật trạng thái chơi nhạc từ proxy
-          if (data.state === 1) setIsPlaying(true);
-          else if (data.state === 2) setIsPlaying(false);
+          if (data.state === 1) {
+            setTubeConnecting(false);
+            setIsPlaying(true);
+          } else if (data.state === 2) {
+            setTubeConnecting(false);
+            setIsPlaying(false);
+          }
           return;
         }
 
         if (data.type === 'VTEEN_STATE') {
-          if (data.state === 1) setIsPlaying(true);
-          else if (data.state === 2) setIsPlaying(false);
+          if (data.state === 1) {
+            setTubeConnecting(false);
+            setIsPlaying(true);
+          } else if (data.state === 2) {
+            setTubeConnecting(false);
+            setIsPlaying(false);
+          }
           else if (data.state === 0) playNextRef.current?.();
           return;
         }
@@ -119,10 +130,13 @@ function App() {
         if (data.event === 'onStateChange') {
           const state = data.info; // 1=PLAYING, 2=PAUSED, 0=ENDED
           if (state === 1) {
+            setTubeConnecting(false);
             setIsPlaying(true);
           } else if (state === 2) {
+            setTubeConnecting(false);
             setIsPlaying(false);
           } else if (state === 0) {
+            setTubeConnecting(false);
             playNextRef.current?.();
           }
         }
@@ -130,6 +144,7 @@ function App() {
         // Bắt lỗi từ YouTube iframe
         if (data.event === 'onError') {
           console.warn('YouTube Player Error:', data.info);
+          setTubeConnecting(false);
           playNextRef.current?.();
         }
         if (data.event === 'infoDelivery' && data.info) {
@@ -175,6 +190,13 @@ function App() {
         const timer = window.setTimeout(perform, delay);
         playRetryTimersRef.current.push(timer);
       });
+      const watchdog = window.setTimeout(() => {
+        sendCommand('getDuration');
+        sendCommand('getCurrentTime');
+        sendCommand('playVideo');
+        sendCommand('unMute');
+      }, 4000);
+      playRetryTimersRef.current.push(watchdog);
     },
     [sendCommand]
   );
@@ -197,7 +219,8 @@ function App() {
       setCurrentVideo(video);
       setCurrentTime(0);
       setDuration(0);
-      setIsPlaying(true);
+      setTubeConnecting(true);
+      setIsPlaying(false);
       if (activeTab === 'tube') setTubeExpanded(true);
       ytSendPlay(video);
       if (ytListeningRef.current) {
@@ -409,7 +432,9 @@ function App() {
                         onClick={togglePlay}
                         className="w-9 h-9 bg-white text-black rounded-full flex items-center justify-center active:scale-90 transition-transform shadow-lg"
                       >
-                        {isPlaying ? (
+                        {tubeConnecting ? (
+                          <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                        ) : isPlaying ? (
                           <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                         ) : (
                           <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 ml-0.5"><path d="M8 5v14l11-7z"/></svg>
@@ -525,7 +550,9 @@ function App() {
                         onClick={togglePlay}
                         className="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all"
                       >
-                        {isPlaying ? (
+                        {tubeConnecting ? (
+                          <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
+                        ) : isPlaying ? (
                           <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                         ) : (
                           <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 ml-1"><path d="M8 5v14l11-7z"/></svg>
