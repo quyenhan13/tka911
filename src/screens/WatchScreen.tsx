@@ -70,7 +70,10 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
         <!DOCTYPE html>
         <html>
         <head>
-          <style>body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden}</style>
+          <style>
+            body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center}
+            #player{width:100vw;height:100vh}
+          </style>
         </head>
         <body>
           <div id="player"></div>
@@ -80,7 +83,7 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
             function onYouTubeIframeAPIReady() {
               player = new YT.Player('player', {
                 height: '100%', width: '100%', videoId: '${id}',
-                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': 'https://vteen.shop' },
+                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': window.location.origin },
                 events: { 'onReady': function(e){ e.target.playVideo(); } }
               });
             }
@@ -182,16 +185,26 @@ const buildWebWatchPath = (slug: string, episode: string) => {
 };
 
 const fetchVteenText = async (pathOrUrl: string) => {
-  const url = pathOrUrl.startsWith('http') ? pathOrUrl : `${CONFIG.SITE_BASE_URL}${pathOrUrl}`;
-
+  // Đảm bảo pathOrUrl bắt đầu bằng / nếu là path
+  const cleanPath = pathOrUrl.startsWith('http') ? pathOrUrl : (pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`);
+  const url = cleanPath.startsWith('http') ? cleanPath : `${CONFIG.SITE_BASE_URL}${cleanPath}`;
+  
   if (import.meta.env.DEV) {
     const parsed = new URL(url);
-    const devPath = parsed.origin === CONFIG.SITE_BASE_URL
-      ? `/__vteen${parsed.pathname}${parsed.search}${parsed.hash}`
-      : url;
-    const response = await fetch(devPath, { credentials: 'include' });
-    if (!response.ok) throw new Error(`Web player HTTP ${response.status}`);
-    return response.text();
+    // Luôn dùng /__vteen làm tiền tố duy nhất, loại bỏ mọi tiền tố folder khác nếu có
+    const devPath = `/__vteen${parsed.pathname}${parsed.search}${parsed.hash}`;
+    
+    try {
+      const response = await fetch(devPath, { credentials: 'include' });
+      if (!response.ok) throw new Error(`Web player HTTP ${response.status}`);
+      return response.text();
+    } catch (err) {
+      console.error('Fetch error:', err);
+      // Fallback gọi thẳng
+      const directUrl = url.replace('http://', 'https://');
+      const response = await fetch(directUrl, { credentials: 'include' });
+      return response.text();
+    }
   }
 
   if (Capacitor.isNativePlatform()) {
@@ -235,10 +248,10 @@ const prepareEmbedHtml = (html: string) => {
     </style>
   `;
 
-  // Thêm base tag để các link tương đối trong HTML hoạt động
-  const baseTag = `<base href="${CONFIG.SITE_BASE_URL}/">`;
+  // Thêm base tag tuyệt đối để các link tương đối trong HTML luôn trỏ về server chính
+  const baseTag = `<base href="https://vteen.shop/">`;
   
-  return `<!DOCTYPE html><html><head>${baseTag}${extraStyle}</head><body>${html}</body></html>`;
+  return `<!DOCTYPE html><html><head>${baseTag}${extraStyle}</head><body style="background:#000">${html}</body></html>`;
 };
 
 
@@ -276,7 +289,10 @@ const prepareServerOneHtml = (html: string) => {
         <!DOCTYPE html>
         <html>
         <head>
-          <style>body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden}</style>
+          <style>
+            body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center}
+            #player{width:100vw;height:100vh}
+          </style>
         </head>
         <body>
           <div id="player"></div>
@@ -286,7 +302,7 @@ const prepareServerOneHtml = (html: string) => {
             function onYouTubeIframeAPIReady() {
               player = new YT.Player('player', {
                 height: '100%', width: '100%', videoId: '${id}',
-                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': 'https://vteen.shop' },
+                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': window.location.origin },
                 events: { 'onReady': function(e){ e.target.playVideo(); } }
               });
             }
@@ -468,7 +484,13 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           const videoSrc = extractVideoSource(embedHtml);
           
           if (vipSrc) {
-            setWebPlayer({ html: null, src: vipSrc, videoSrc: null });
+            // Kiểm tra xem là link hay là mã HTML (srcDoc)
+            const isHtml = vipSrc.trim().startsWith('<!DOCTYPE') || vipSrc.trim().startsWith('<html');
+            setWebPlayer({ 
+              html: isHtml ? vipSrc : null, 
+              src: isHtml ? null : vipSrc, 
+              videoSrc: null 
+            });
           } else if (videoSrc) {
             setWebPlayer({ html: null, src: null, videoSrc });
           } else {
@@ -476,7 +498,14 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           }
         } else {
           const videoSrc = extractVideoSource(embedHtml);
-          setWebPlayer({ html: videoSrc ? null : prepareEmbedHtml(embedHtml), src: null, videoSrc });
+          const prepared = prepareEmbedHtml(embedHtml);
+          const isHtml = prepared.trim().startsWith('<!DOCTYPE') || prepared.trim().startsWith('<html');
+          
+          setWebPlayer({ 
+            html: videoSrc ? null : (isHtml ? prepared : null), 
+            src: videoSrc ? null : (isHtml ? null : prepared), 
+            videoSrc 
+          });
         }
 
         const selectedServer = Number(selectedKey);
@@ -528,7 +557,9 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   }
 
   return (
-    <div className="fixed inset-0 z-[1000] flex flex-col overflow-hidden overscroll-none">
+    <div className="fixed inset-0 z-[1000] flex flex-col overflow-hidden overscroll-none bg-transparent">
+      {/* Lớp nền đen đặc để che trang chủ */}
+      <div className="absolute inset-0 z-[-2] bg-[#05070a]" />
       <UniverseBackground />
       {/* Header Bar */}
       <div 

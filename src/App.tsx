@@ -95,24 +95,26 @@ function App() {
       ) : (
         <>
           <AnimatePresence mode="wait">
-            <motion.main
-              key={activeTab}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="h-full overflow-y-auto overscroll-none pb-32"
-            >
-              {activeTab === 'home' && <HomeScreen onWatch={(slug: string) => setWatchingSlug(slug)} />}
-              {activeTab === 'driver' && (
-                <ErrorBoundary>
-                  <DriverScreen user={user} />
-                </ErrorBoundary>
-              )}
-              {activeTab === 'profile' && (
-                <ProfileScreen user={user} onLogout={handleLogout} onWatch={(slug: string) => setWatchingSlug(slug)} />
-              )}
-            </motion.main>
+            {!watchingSlug && (
+              <motion.main
+                key={activeTab}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="h-full overflow-y-auto overscroll-none pb-32"
+              >
+                {activeTab === 'home' && <HomeScreen onWatch={(slug: string) => setWatchingSlug(slug)} />}
+                {activeTab === 'driver' && (
+                  <ErrorBoundary>
+                    <DriverScreen user={user} />
+                  </ErrorBoundary>
+                )}
+                {activeTab === 'profile' && (
+                  <ProfileScreen user={user} onLogout={handleLogout} onWatch={(slug: string) => setWatchingSlug(slug)} />
+                )}
+              </motion.main>
+            )}
           </AnimatePresence>
 
           <AnimatePresence>
