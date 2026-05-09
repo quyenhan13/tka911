@@ -56,11 +56,37 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
     }
     
     if (id && id.length <= 15) {
-      return `${CONFIG.SITE_BASE_URL}/yt_player.php?id=${id}`;
+      const params = new URLSearchParams({
+        autoplay: '1',
+        playsinline: '1',
+        controls: '1',
+        rel: '0',
+        modestbranding: '1'
+      });
+      return `https://www.youtube.com/embed/${id}?${params.toString()}`;
     }
   }
 
   // 2. Xử lý các link khác, đảm bảo HTTPS và đúng root domain
+  const looksLikeDrive = value.includes('drive.google.com') || value.includes('docs.google.com') || host?.toLowerCase()?.includes('drive');
+  if (looksLikeDrive) {
+    try {
+      const driveUrl = value.startsWith('http') ? new URL(value) : null;
+      const queryId = driveUrl?.searchParams.get('id');
+      const pathId = driveUrl?.pathname.match(/\/d\/([^/]+)/)?.[1];
+      const rawId = value.length > 20 && !value.includes('/') && !value.includes('.') ? value : null;
+      const driveId = queryId || pathId || rawId;
+      if (driveId) {
+        return `https://drive.google.com/file/d/${driveId}/preview`;
+      }
+    } catch {
+      const driveId = value.match(/\/d\/([^/]+)/)?.[1];
+      if (driveId) {
+        return `https://drive.google.com/file/d/${driveId}/preview`;
+      }
+    }
+  }
+
   let src = value;
   if (value.startsWith('//')) {
     src = `https:${value}`;
@@ -86,6 +112,44 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
   }
 
   return src;
+};
+
+const toText = (value: unknown) => (typeof value === 'string' || typeof value === 'number' ? String(value) : '');
+
+const normalizeEpisodes = (value: unknown): Episode[] => {
+  const rawList = Array.isArray(value)
+    ? value
+    : value && typeof value === 'object'
+      ? Object.values(value)
+      : [];
+
+  return rawList
+    .map((raw, index): Episode | null => {
+      if (!raw || typeof raw !== 'object') return null;
+      const item = raw as Record<string, unknown>;
+      const embedUrl = toText(item.embed_url || item.url || item.link || item.src).trim() || null;
+      const embedUrl2 = toText(item.embed_url_2 || item.backup_url || item.url_2 || item.link_2).trim() || null;
+      if (!embedUrl && !embedUrl2) return null;
+
+      return {
+        episode: toText(item.episode || item.ep || item.name || index + 1).trim() || String(index + 1),
+        embed_url: embedUrl,
+        embed_url_2: embedUrl2,
+        embed_host: toText(item.embed_host || item.host).trim() || null,
+        embed_host_2: toText(item.embed_host_2 || item.host_2).trim() || null
+      };
+    })
+    .filter((episode): episode is Episode => Boolean(episode));
+};
+
+const normalizeMovieDetails = (data: MovieDetailsResponse['data']): MovieDetails | null => {
+  if (!data) return null;
+  return {
+    title: toText(data.title).trim() || 'Phim VTEEN',
+    description: toText(data.description).trim(),
+    poster: toText(data.poster).trim(),
+    episodes: normalizeEpisodes(data.episodes)
+  };
 };
 
 const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized }) => {
