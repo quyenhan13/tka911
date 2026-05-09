@@ -336,6 +336,25 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
     return `https://drive.google.com/thumbnail?id=${file.id}&sz=w400`;
   };
 
+  const submitSearch = (event?: React.FormEvent) => {
+    event?.preventDefault();
+    const nextQuery = searchQuery.trim();
+    if (nextQuery === submittedQuery) {
+      fetchFiles();
+    } else {
+      setSubmittedQuery(nextQuery);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    if (submittedQuery) {
+      setSubmittedQuery('');
+    } else {
+      fetchFiles();
+    }
+  };
+
   return (
     <div className="flex flex-col h-full relative overflow-hidden bg-transparent">
       {/* Header */}
@@ -442,7 +461,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
 
       {/* Search Bar - Cosmic Pill Style */}
       <div className="px-6 mt-5">
-        <form onSubmit={(e) => { e.preventDefault(); fetchFiles(); }} className="relative group">
+        <form onSubmit={submitSearch} className="relative group">
           <input
             type="text"
             placeholder="Tìm kiếm tệp trong vũ trụ..."
@@ -459,7 +478,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
             {searchQuery && (
               <button
                 type="button"
-                onClick={() => { setSearchQuery(''); }}
+                onClick={clearSearch}
                 className="w-8 h-8 flex items-center justify-center text-white/20 hover:text-white transition-colors"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
@@ -469,7 +488,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
             )}
             <button
               type="button"
-              onClick={() => fetchFiles()}
+              onClick={() => submitSearch()}
               className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:bg-primary/20 hover:text-primary transition-all active:scale-90"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}>
