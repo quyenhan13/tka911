@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONFIG } from '../config';
 
@@ -22,8 +22,18 @@ interface Quota {
   percent: number;
 }
 
+interface DriverUser {
+  role?: string;
+}
+
+interface FileIconInfo {
+  icon: React.ReactNode;
+  color: string;
+  label: string;
+}
+
 interface DriverProps {
-  user: any;
+  user: DriverUser;
 }
 
 const DriverScreen: React.FC<DriverProps> = ({ user }) => {
@@ -38,10 +48,6 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
 
   const isAdmin = user?.role === 'admin';
-
-  useEffect(() => {
-    fetchFiles();
-  }, [activeAccount]);
 
   const handleDelete = async (fileId: string, account: string) => {
     if (!window.confirm('Bạn có chắc muốn xóa tệp này?')) return;
@@ -58,7 +64,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
     }
   };
 
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     setLoading(true);
     try {
       const savedUser = localStorage.getItem('vteen_user');
@@ -82,7 +88,12 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeAccount, searchQuery]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => fetchFiles(), 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchFiles]);
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
@@ -112,7 +123,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
     }
   };
 
-  const getFileIcon = (mimeType: string) => {
+  const getFileIcon = (mimeType: string): FileIconInfo => {
     if (mimeType.includes('folder')) return {
       icon: <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#fbbf24]"><path d="M20 18a2 2 0 002-2V6a2 2 0 00-2-2H9l-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2h16z" /></svg>,
       color: '#fbbf24', label: 'FOLDER'
@@ -300,7 +311,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
             <AnimatePresence>
               {files.map((file, idx) => {
                 const info = getFileIcon(file.mimeType);
-                const isGuest = file.description?.includes('GUEST_UPLOAD');
+                const isGuest = Boolean(file.description?.includes('GUEST_UPLOAD'));
 
                 return (
                   <FileCard
@@ -368,7 +379,14 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   );
 };
 
-const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: any) => {
+interface FileViewModalProps {
+  file: DriveFile | null;
+  onClose: () => void;
+  formatThumbnail: (file: DriveFile) => string | null;
+  getFileIcon: (mimeType: string) => FileIconInfo;
+}
+
+const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: FileViewModalProps) => {
   if (!file) return null;
   const info = getFileIcon(file.mimeType);
   const isImg = file.mimeType.includes('image');
@@ -406,7 +424,7 @@ const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: any) => 
             <div className="w-full aspect-video bg-black/40 rounded-[2rem] border border-white/5 flex items-center justify-center overflow-hidden mb-8 relative group">
               {isImg ? (
                 <img
-                  src={formatThumbnail(file)}
+                  src={formatThumbnail(file) ?? undefined}
                   className="w-full h-full object-contain p-2"
                   alt=""
                 />
@@ -465,7 +483,18 @@ const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: any) => 
   );
 };
 
-const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDelete, onView }: any) => {
+interface FileCardProps {
+  file: DriveFile;
+  info: FileIconInfo;
+  isGuest: boolean;
+  isAdmin: boolean;
+  index: number;
+  formatThumbnail: (file: DriveFile) => string | null;
+  onDelete: () => void;
+  onView: () => void;
+}
+
+const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDelete, onView }: FileCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
 
@@ -536,7 +565,7 @@ const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDele
         {file.thumbnailLink ? (
           <>
             <img
-              src={formatThumbnail(file)}
+              src={formatThumbnail(file) ?? undefined}
               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-115"
               alt=""
             />
