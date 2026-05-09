@@ -188,17 +188,28 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
 
   const fetchFiles = useCallback(async () => {
     setLoading(true);
+    setSyncError(null);
     try {
       const savedUser = localStorage.getItem('vteen_user');
-      if (!savedUser) return;
-      const apiToken = JSON.parse(savedUser)?.api_token;
+      const apiToken = savedUser ? JSON.parse(savedUser)?.api_token : null;
 
-      const url = `${CONFIG.API_BASE_URL}/driver_list.php?account=${activeAccount}&q=${encodeURIComponent(searchQuery)}&api_token=${apiToken}`;
-      const response = await fetch(url);
-      const result = await response.json();
-      console.log('Driver API Result:', result);
+      let apiFiles: DriveFile[] = [];
+      let apiAccounts: string[] = [];
+      let webState: WebDriveState = { files: [], accounts: ['all'] };
+      const failures: string[] = [];
+      let result: DriverApiResponse | null = null;
 
-      if (result.status === 'success') {
+      if (apiToken) {
+        try {
+          const url = `${CONFIG.API_BASE_URL}/driver_list.php?account=${activeAccount}&q=${encodeURIComponent(searchQuery)}&api_token=${apiToken}`;
+          const response = await fetch(url);
+          result = await response.json();
+        } catch {
+          failures.push('API Drive khong phan hoi');
+        }
+      }
+
+      if (result?.status === 'success') {
         setFiles(result.data);
         if (result.accounts) setAccounts(['all', ...result.accounts]);
         if (result.quota) setQuota(result.quota);
