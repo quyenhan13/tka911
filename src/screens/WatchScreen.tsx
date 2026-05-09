@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScreenOrientation as OrientationPlugin } from '@capacitor/screen-orientation';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { getHistory, removeFromHistory, saveToHistory } from '../storage/watchHistory';
 import { toggleFavorite, isFavorite } from '../storage/favorites';
 import UniverseBackground from '../components/UniverseBackground';
@@ -154,15 +155,78 @@ const normalizeMovieDetails = (data: MovieDetailsResponse['data']): MovieDetails
   };
 };
 
+const buildWebWatchPath = (slug: string, episode: string) => {
+  const params = new URLSearchParams({ slug, ep: episode });
+  return `/xem.php?${params.toString()}`;
+};
+
+const fetchVteenText = async (pathOrUrl: string) => {
+  const url = pathOrUrl.startsWith('http') ? pathOrUrl : `${CONFIG.SITE_BASE_URL}${pathOrUrl}`;
+
+  if (import.meta.env.DEV) {
+    const parsed = new URL(url);
+    const devPath = parsed.origin === CONFIG.SITE_BASE_URL
+      ? `/__vteen${parsed.pathname}${parsed.search}${parsed.hash}`
+      : url;
+    const response = await fetch(devPath, { credentials: 'include' });
+    if (!response.ok) throw new Error(`Web player HTTP ${response.status}`);
+    return response.text();
+  }
+
+  if (Capacitor.isNativePlatform()) {
+    const response = await CapacitorHttp.get({ url, responseType: 'text' });
+    if (response.status < 200 || response.status >= 300) throw new Error(`Web player HTTP ${response.status}`);
+    return typeof response.data === 'string' ? response.data : String(response.data ?? '');
+  }
+
+  const response = await fetch(url, { credentials: 'include' });
+  if (!response.ok) throw new Error(`Web player HTTP ${response.status}`);
+  return response.text();
+};
+
+const parseWebServers = (html: string) => {
+  const match = html.match(/const\s+SERVERS\s*=\s*(\{[\s\S]*?\});/);
+  if (!match?.[1]) return {};
+
+  try {
+    const parsed = JSON.parse(match[1]) as Record<string, string>;
+    return Object.fromEntries(Object.entries(parsed).filter(([, value]) => typeof value === 'string' && value.trim()));
+  } catch {
+    return {};
+  }
+};
+
+const toVteenPath = (value: string) => {
+  if (value.startsWith('http')) {
+    const url = new URL(value);
+    return url.origin === CONFIG.SITE_BASE_URL ? `${url.pathname}${url.search}${url.hash}` : value;
+  }
+
+  return `/${value.replace(/^\/+/, '')}`;
+};
+
+const prepareEmbedHtml = (html: string) => {
+  const cleaned = html.replace(/<script\b[^>]*static\.cloudflareinsights\.com[\s\S]*?<\/script>/gi, '');
+  const baseTag = `<base href="${CONFIG.SITE_BASE_URL}/">`;
+
+  if (cleaned.includes('<base')) {
+    return cleaned.replace(/<base\b[^>]*>/i, baseTag);
+  }
+
+  return cleaned.replace(/<head[^>]*>/i, (head) => `${head}${baseTag}`);
+};
+
 const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized }) => {
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [currentEp, setCurrentEp] = useState<Episode | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fav, setFav] = useState(false);
-  const [activeServer, setActiveServer] = useState(1);
-  const [playerStarted, setPlayerStarted] = useState(false);
-  const [showPlayerHelp, setShowPlayerHelp] = useState(false);
+  const [activeServer, setActiveServer] = useState(2);
+  const [webServers, setWebServers] = useState<Record<string, string>>({});
+  const [webPlayerHtml, setWebPlayerHtml] = useState<string | null>(null);
+  const [playerLoading, setPlayerLoading] = useState(false);
+  const [playerError, setPlayerError] = useState<string | null>(null);
 
   useEffect(() => {
     // Cho phép xoay màn hình khi xem phim
@@ -184,7 +248,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
   const selectEpisode = (ep: Episode, movieDetails = details) => {
     setCurrentEp(ep);
-    setActiveServer(1);
+    setActiveServer(2);
     if (movieDetails) {
       saveToHistory({
         slug,
