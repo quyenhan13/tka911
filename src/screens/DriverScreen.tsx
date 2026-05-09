@@ -258,6 +258,12 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
 
       const nextAccounts = unique(['all', ...webState.accounts, ...apiAccounts]);
       const nextFiles = mergeFiles(apiFiles, webState.files);
+      if (nextFiles.length === 0 && cache?.files.length && failures.length) {
+        if (Date.now() - cache.savedAt >= DRIVE_CACHE_MAX_AGE) {
+          setSyncError(failures.join(' / '));
+        }
+        return;
+      }
       setFiles(nextFiles);
       setAccounts(nextAccounts);
       if (nextQuota) setQuota(nextQuota);
@@ -507,7 +513,20 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
 
       {/* Files Grid - Premium UI */}
       <div className="flex-1 overflow-y-auto px-6 py-6 pb-40 no-scrollbar">
-        {files.length === 0 && !loading ? (
+        {files.length === 0 && loading ? (
+          <div className="grid grid-cols-2 gap-4">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03]">
+                <div className="aspect-[4/3] bg-white/[0.05] skeleton-shimmer" />
+                <div className="space-y-3 p-5">
+                  <div className="h-4 w-4/5 rounded bg-white/[0.08] skeleton-shimmer" />
+                  <div className="h-3 w-1/2 rounded bg-white/[0.05] skeleton-shimmer" />
+                  <div className="h-10 rounded-2xl bg-white/[0.05] skeleton-shimmer" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : files.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-white/20 gap-6">
             <div className="w-24 h-24 rounded-full bg-white/5 border border-white/5 flex items-center justify-center animate-pulse">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12 opacity-30">
