@@ -70,7 +70,7 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
         autoplay: '1'
       });
       // Sử dụng proxy đơn giản hóa để tránh lỗi 153
-      return `${CONFIG.SITE_BASE_URL}/yt_player.php?${params.toString()}`;
+      return `${CONFIG.SITE_BASE_URL}/yt_player.php?${params.toString()}&t=${Date.now()}`;
     }
   }
 
@@ -238,7 +238,7 @@ const prepareServerOneHtml = (html: string) => {
       id = parts[parts.length - 1].split('?')[0];
     }
     if (id && id.length === 11) {
-      return `${CONFIG.SITE_BASE_URL}/yt_player.php?id=${id}&autoplay=1`;
+      return `${CONFIG.SITE_BASE_URL}/yt_player.php?id=${id}&autoplay=1&t=${Date.now()}`;
     }
   }
   
