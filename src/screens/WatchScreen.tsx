@@ -30,6 +30,7 @@ interface MovieDetailsResponse {
 interface WebPlayerState {
   html: string | null;
   src: string | null;
+  videoSrc: string | null;
 }
 
 interface WatchScreenProps {
@@ -228,15 +229,26 @@ const prepareServerOneHtml = (html: string) => {
   return new URL(iframeSrc, CONFIG.SITE_BASE_URL).toString();
 };
 
+const extractVideoSource = (html: string) => {
+  const match = html.match(/const\s+source\s*=\s*("(?:(?:\\.)|[^"\\])*")/);
+  if (!match?.[1]) return null;
+
+  try {
+    return JSON.parse(match[1]) as string;
+  } catch {
+    return null;
+  }
+};
+
 const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized }) => {
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [currentEp, setCurrentEp] = useState<Episode | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fav, setFav] = useState(false);
-  const [activeServer, setActiveServer] = useState(1);
+  const [activeServer, setActiveServer] = useState(2);
   const [webServers, setWebServers] = useState<Record<string, string>>({});
-  const [webPlayer, setWebPlayer] = useState<WebPlayerState>({ html: null, src: null });
+  const [webPlayer, setWebPlayer] = useState<WebPlayerState>({ html: null, src: null, videoSrc: null });
   const [playerLoading, setPlayerLoading] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
 
@@ -260,7 +272,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
   const selectEpisode = (ep: Episode, movieDetails = details) => {
     setCurrentEp(ep);
-    setActiveServer(1);
+    setActiveServer(2);
     if (movieDetails) {
       saveToHistory({
         slug,
@@ -309,7 +321,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           const savedEp = saved ? movieDetails.episodes.find((ep: Episode) => ep.episode === saved.lastEpisode) : null;
           const nextEp = savedEp || movieDetails.episodes[0];
           setCurrentEp(nextEp);
-          setActiveServer(1);
+          setActiveServer(2);
           saveToHistory({
             slug,
             title: movieDetails.title,
@@ -356,17 +368,17 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     const loadWebPlayer = async () => {
       setPlayerLoading(true);
       setPlayerError(null);
-      setWebPlayer({ html: null, src: null });
+      setWebPlayer({ html: null, src: null, videoSrc: null });
 
       try {
         const watchHtml = await fetchVteenText(buildWebWatchPath(slug, currentEp.episode));
         const servers = parseWebServers(watchHtml);
         const selectedKey = servers[String(activeServer)]
           ? String(activeServer)
-          : servers['1']
-            ? '1'
-            : servers['2']
-              ? '2'
+          : servers['2']
+            ? '2'
+            : servers['1']
+              ? '1'
             : Object.keys(servers)[0];
 
         if (!selectedKey || !servers[selectedKey]) {
@@ -380,9 +392,10 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         if (selectedKey === '1') {
           const vipSrc = prepareServerOneHtml(embedHtml);
           if (!vipSrc) throw new Error('Khong tim thay iframe server VIP');
-          setWebPlayer({ html: null, src: vipSrc });
+          setWebPlayer({ html: null, src: vipSrc, videoSrc: null });
         } else {
-          setWebPlayer({ html: prepareEmbedHtml(embedHtml), src: null });
+          const videoSrc = extractVideoSource(embedHtml);
+          setWebPlayer({ html: videoSrc ? null : prepareEmbedHtml(embedHtml), src: null, videoSrc });
         }
 
         const selectedServer = Number(selectedKey);
@@ -392,7 +405,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       } catch {
         if (!cancelled) {
           setWebServers({});
-          setWebPlayer({ html: null, src: null });
+          setWebPlayer({ html: null, src: null, videoSrc: null });
           setPlayerError('Khong tai duoc player web VTEEN');
         }
       } finally {
@@ -450,9 +463,19 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
       {/* Video Player Area */}
       <div className="relative z-50 w-full shrink-0 aspect-video max-h-[42vh] bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
-        {currentEp && (webPlayer.html || webPlayer.src || currentEmbedSrc || playerLoading || playerError) ? (
+        {currentEp && (webPlayer.videoSrc || webPlayer.html || webPlayer.src || currentEmbedSrc || playerLoading || playerError) ? (
           <>
-            {webPlayer.src ? (
+            {webPlayer.videoSrc ? (
+              <video
+                key={`${currentEp.episode}-${activeServer}-${webPlayer.videoSrc}`}
+                src={webPlayer.videoSrc}
+                className="absolute inset-0 h-full w-full bg-black"
+                controls
+                autoPlay
+                playsInline
+                preload="auto"
+              />
+            ) : webPlayer.src ? (
               <iframe 
                 key={`${currentEp.episode}-${activeServer}-${webPlayer.src}`}
                 src={webPlayer.src}
