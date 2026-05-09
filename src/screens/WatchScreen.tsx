@@ -333,15 +333,57 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       <div className="relative z-50 w-full shrink-0 aspect-video max-h-[42vh] bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
         {currentEp && currentEmbedSrc ? (
           <>
-            <iframe 
-              key={`${currentEp.episode}-${activeServer}`}
-              src={currentEmbedSrc}
-              className="absolute inset-0 w-full h-full border-0 bg-black"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-              allowFullScreen
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Player"
-            />
+            {playerStarted && (
+              <iframe 
+                key={`${currentEp.episode}-${activeServer}`}
+                src={currentEmbedSrc}
+                className="absolute inset-0 w-full h-full border-0 bg-black"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Player"
+              />
+            )}
+
+            {!playerStarted && (
+              <button
+                type="button"
+                onClick={() => setPlayerStarted(true)}
+                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#05070a] text-white transition active:scale-[0.99]"
+              >
+                <span className="grid h-16 w-16 place-items-center rounded-full bg-primary text-black shadow-[0_0_32px_rgba(6,182,212,0.45)]">
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="ml-1 h-8 w-8">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </span>
+                <span className="text-xs font-black uppercase tracking-[0.22em] text-primary">
+                  Phat tap {currentEp.episode}
+                </span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={openPlayerOutside}
+              className="absolute right-3 top-3 z-20 rounded-xl border border-white/10 bg-black/65 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-white/85 backdrop-blur-md active:scale-95"
+            >
+              Mo ngoai
+            </button>
+
+            {playerStarted && showPlayerHelp && (
+              <div className="absolute inset-x-3 bottom-3 z-20 flex items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-black/75 px-3 py-3 backdrop-blur-md">
+                <span className="text-[10px] font-bold leading-snug text-white/75">
+                  Neu khung phat van trang, mo bang trinh phat ngoai.
+                </span>
+                <button
+                  type="button"
+                  onClick={openPlayerOutside}
+                  className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[9px] font-black uppercase tracking-widest text-black"
+                >
+                  Mo
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center gap-2">
