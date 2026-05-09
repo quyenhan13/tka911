@@ -212,14 +212,29 @@ const toVteenPath = (value: string) => {
 };
 
 const prepareEmbedHtml = (html: string) => {
-  const cleaned = html.replace(/<script\b[^>]*static\.cloudflareinsights\.com[\s\S]*?<\/script>/gi, '');
+  if (!html || !html.trim()) return '<html><body style="background:#000;display:flex;align-items:center;justify-content:center;color:#666;font-family:sans-serif">Khong co noi dung trinh phat</body></html>';
+  
+  let cleaned = html
+    .replace(/<script\b[^>]*static\.cloudflareinsights\.com[\s\S]*?<\/script>/gi, '')
+    .replace(/<script\b[^>]*googletagmanager\.com[\s\S]*?<\/script>/gi, '');
+
   const baseTag = `<base href="${CONFIG.SITE_BASE_URL}/">`;
+  const extraStyle = `
+    <style>
+      body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+      iframe, video { width: 100% !important; height: 100% !important; border: none !important; }
+    </style>
+  `;
 
   if (cleaned.includes('<base')) {
-    return cleaned.replace(/<base\b[^>]*>/i, baseTag);
+    cleaned = cleaned.replace(/<base\b[^>]*>/i, baseTag);
+  } else if (cleaned.includes('<head')) {
+    cleaned = cleaned.replace(/<head[^>]*>/i, (head) => `${head}${baseTag}${extraStyle}`);
+  } else {
+    cleaned = `${baseTag}${extraStyle}${cleaned}`;
   }
-
-  return cleaned.replace(/<head[^>]*>/i, (head) => `${head}${baseTag}`);
+  
+  return cleaned;
 };
 
 const prepareServerOneHtml = (html: string) => {
