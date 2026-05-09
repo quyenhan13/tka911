@@ -210,14 +210,27 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       }
 
       if (result?.status === 'success') {
-        setFiles(result.data);
-        if (result.accounts) setAccounts(['all', ...result.accounts]);
+        apiFiles = (result.data || []).map((file) => ({ ...file, source: 'api' as const }));
+        apiAccounts = result.accounts || [];
         if (result.quota) setQuota(result.quota);
       } else {
-        alert('Lỗi API: ' + result.message);
+        failures.push(result?.message || 'API Drive khong dong bo');
       }
-    } catch (err) {
-      console.error('Fetch driver files error:', err);
+
+      try {
+        const html = await fetchWebDriveHtml(activeAccount, searchQuery);
+        webState = parseWebDrive(html);
+      } catch {
+        failures.push('Web Drive khong phan hoi');
+      }
+
+      setFiles(mergeFiles(apiFiles, webState.files));
+      setAccounts(unique(['all', ...webState.accounts, ...apiAccounts]));
+      if (failures.length && apiFiles.length === 0 && webState.files.length === 0) {
+        setSyncError(failures.join(' / '));
+      }
+    } catch {
+      setSyncError('Khong the dong bo Drive');
     } finally {
       setLoading(false);
     }
@@ -276,6 +289,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   };
 
   const formatThumbnail = (file: DriveFile) => {
+    if (file.source === 'web') return file.thumbnailLink || null;
     if (!file.thumbnailLink) return null;
     // Sử dụng link thumbnail chính thức của Google Drive qua ID để ổn định hơn
     return `https://drive.google.com/thumbnail?id=${file.id}&sz=w400`;
@@ -424,6 +438,12 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
           </div>
         </form>
       </div>
+
+      {syncError && (
+        <div className="mx-6 mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-[11px] font-bold text-red-100">
+          {syncError}
+        </div>
+      )}
 
       {/* Files Grid - Premium UI */}
       <div className="flex-1 overflow-y-auto px-6 py-6 pb-40 no-scrollbar">
