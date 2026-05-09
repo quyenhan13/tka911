@@ -37,9 +37,9 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
   if (!value) return null;
 
   // 1. Xử lý link YouTube để dùng qua proxy (cần thiết cho một số phim trên server 1)
-  const hasYTKeyword = value.includes('youtube.com') || value.includes('youtu.be');
-  const isYTId = value.length === 11 && !value.includes('.') && !value.includes('/');
-  const isYouTube = (host?.toLowerCase()?.includes('youtube') && (hasYTKeyword || isYTId)) || hasYTKeyword;
+  const hasYTKeyword = value.includes('youtube.com') || value.includes('youtu.be') || value.includes('youtube-nocookie.com');
+  const isYTId = /^[a-zA-Z0-9_-]{11}$/.test(value);
+  const isYouTube = isYTId || hasYTKeyword || Boolean(host?.toLowerCase()?.includes('youtube'));
 
   if (isYouTube) {
     let id = value;
@@ -48,6 +48,8 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
         id = new URL(value).searchParams.get('v') || value;
       } else if (value.includes('embed/')) {
         id = value.split('embed/')[1].split('?')[0];
+      } else if (value.includes('shorts/')) {
+        id = value.split('shorts/')[1].split('?')[0];
       } else if (value.includes('youtu.be/')) {
         id = value.split('youtu.be/')[1].split('?')[0];
       }
@@ -55,7 +57,7 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
       id = value;
     }
     
-    if (id && id.length <= 15) {
+    if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) {
       const params = new URLSearchParams({
         autoplay: '1',
         playsinline: '1',
@@ -68,14 +70,14 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
   }
 
   // 2. Xử lý các link khác, đảm bảo HTTPS và đúng root domain
-  const looksLikeDrive = value.includes('drive.google.com') || value.includes('docs.google.com') || host?.toLowerCase()?.includes('drive');
+  const rawDriveId = /^[a-zA-Z0-9_-]{20,}$/.test(value) ? value : null;
+  const looksLikeDrive = Boolean(rawDriveId) || value.includes('drive.google.com') || value.includes('docs.google.com') || host?.toLowerCase()?.includes('drive');
   if (looksLikeDrive) {
     try {
       const driveUrl = value.startsWith('http') ? new URL(value) : null;
       const queryId = driveUrl?.searchParams.get('id');
       const pathId = driveUrl?.pathname.match(/\/d\/([^/]+)/)?.[1];
-      const rawId = value.length > 20 && !value.includes('/') && !value.includes('.') ? value : null;
-      const driveId = queryId || pathId || rawId;
+      const driveId = queryId || pathId || rawDriveId;
       if (driveId) {
         return `https://drive.google.com/file/d/${driveId}/preview`;
       }
@@ -159,6 +161,8 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   const [error, setError] = useState<string | null>(null);
   const [fav, setFav] = useState(false);
   const [activeServer, setActiveServer] = useState(1);
+  const [playerStarted, setPlayerStarted] = useState(false);
+  const [showPlayerHelp, setShowPlayerHelp] = useState(false);
 
   useEffect(() => {
     // Cho phép xoay màn hình khi xem phim
@@ -267,6 +271,22 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   const currentEmbedUrl = activeServer === 1 ? currentEp?.embed_url : currentEp?.embed_url_2;
   const currentHost = activeServer === 1 ? currentEp?.embed_host : currentEp?.embed_host_2;
   const currentEmbedSrc = buildEmbedSrc(currentEmbedUrl, currentHost);
+
+  useEffect(() => {
+    setPlayerStarted(false);
+    setShowPlayerHelp(false);
+  }, [currentEmbedSrc]);
+
+  useEffect(() => {
+    if (!playerStarted) return;
+    const timer = window.setTimeout(() => setShowPlayerHelp(true), 4500);
+    return () => window.clearTimeout(timer);
+  }, [playerStarted, currentEmbedSrc]);
+
+  const openPlayerOutside = () => {
+    if (!currentEmbedSrc) return;
+    window.open(currentEmbedSrc, '_blank', 'noopener,noreferrer');
+  };
 
   if (loading) {
     return (
