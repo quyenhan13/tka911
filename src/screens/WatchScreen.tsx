@@ -33,7 +33,7 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
   // 1. Xử lý link YouTube để dùng qua proxy (cần thiết cho một số phim trên server 1)
   const hasYTKeyword = value.includes('youtube.com') || value.includes('youtu.be');
   const isYTId = value.length === 11 && !value.includes('.') && !value.includes('/');
-  const isYouTube = (host?.toLowerCase().includes('youtube') && (hasYTKeyword || isYTId)) || hasYTKeyword;
+  const isYouTube = (host?.toLowerCase()?.includes('youtube') && (hasYTKeyword || isYTId)) || hasYTKeyword;
 
   if (isYouTube) {
     let id = value;
