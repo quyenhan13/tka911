@@ -7,9 +7,9 @@ import { CONFIG } from '../config';
 
 interface Episode {
   episode: string;
-  embed_url: string;
+  embed_url: string | null;
   embed_url_2: string | null;
-  embed_host: string;
+  embed_host: string | null;
   embed_host_2: string | null;
 }
 
@@ -22,7 +22,7 @@ interface MovieDetails {
 
 interface MovieDetailsResponse {
   status: string;
-  data?: MovieDetails;
+  data?: Partial<MovieDetails> & { episodes?: unknown };
   message?: string;
 }
 
