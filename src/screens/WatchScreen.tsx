@@ -295,15 +295,11 @@ const prepareServerOneHtml = (html: string) => {
     const youtubeId = getYouTubeId(finalSrc);
     if (youtubeId) return buildYouTubeEmbedUrl(youtubeId);
 
-    let id = '';
-    if (finalSrc.includes('v=')) {
-      id = new URL(finalSrc).searchParams.get('v') || '';
-    } else {
-      const parts = finalSrc.split('/');
-      id = parts[parts.length - 1].split('?')[0];
-    }
+    const fallbackId = finalSrc.includes('v=')
+      ? new URL(finalSrc).searchParams.get('v') || ''
+      : finalSrc.split('/').at(-1)?.split('?')[0] || '';
     
-    if (id && id.length === 11) {
+    if (fallbackId && fallbackId.length === 11) {
       // Trả về mã HTML trực tiếp để nhúng (srcDoc), tránh lỗi SAMEORIGIN và 153
       return `
         <!DOCTYPE html>
@@ -314,7 +310,7 @@ const prepareServerOneHtml = (html: string) => {
         <body>
           <iframe 
             width="100%" height="100%" 
-            src="https://www.youtube.com/embed/${id}?autoplay=1&mute=1&origin=https://vteen.shop&playsinline=1&rel=0&modestbranding=1" 
+            src="https://www.youtube.com/embed/${fallbackId}?autoplay=1&mute=1&origin=https://vteen.shop&playsinline=1&rel=0&modestbranding=1"
             frameborder="0" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
             allowfullscreen>
@@ -555,7 +551,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     return () => {
       cancelled = true;
     };
-  }, [activeServer, currentEp, slug]);
+  }, [activeServer, currentEmbedSrc, currentEp, slug]);
 
   if (loading) {
     return (
@@ -583,7 +579,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       <UniverseBackground />
       {/* Header Bar */}
       <div 
-        className="shrink-0 px-4 pb-4 flex items-center gap-3 border-b border-white/10 bg-background/10 backdrop-blur-xl"
+        className="relative z-10 shrink-0 px-4 pb-4 flex items-center gap-3 border-b border-white/10 bg-background/10 backdrop-blur-xl"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2.5rem)', minHeight: 'calc(env(safe-area-inset-top) + 6rem)' }}
       >
         <button 
@@ -674,7 +670,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       </div>
 
       {/* Server Selector Buttons */}
-      <div className="shrink-0 px-6 py-4 flex gap-3 border-b border-white/5">
+      <div className="relative z-10 shrink-0 px-6 py-4 flex gap-3 border-b border-white/5 bg-[#05070a]/20 backdrop-blur-sm">
         <button 
           disabled={playerLoading}
           onClick={() => setActiveServer(1)}
@@ -692,7 +688,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       </div>
 
       {/* Info Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col gap-6">
+      <div className="relative z-10 flex-1 min-h-0 overflow-y-auto p-6 flex flex-col gap-6">
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <h1 className="text-2xl font-black text-white leading-tight">{details.title}</h1>

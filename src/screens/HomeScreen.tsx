@@ -90,10 +90,6 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   }, [movies, searchTerm]);
 
   useEffect(() => {
-    setFeaturedIndex(0);
-  }, [page, movies]);
-
-  useEffect(() => {
     if (searchTerm.trim() || movies.length <= 1) return;
 
     const timer = window.setInterval(() => {
@@ -104,7 +100,8 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   }, [movies.length, searchTerm]);
 
   const featuredMovies = searchTerm.trim() ? [] : movies.slice(0, Math.min(movies.length, 8));
-  const featuredMovie = featuredMovies[featuredIndex] ?? null;
+  const activeFeaturedIndex = featuredMovies.length ? featuredIndex % featuredMovies.length : 0;
+  const featuredMovie = featuredMovies[activeFeaturedIndex] ?? null;
   const paginationPages = useMemo(
     () => Array.from({ length: totalPages }, (_, index) => index + 1)
       .filter((item) => item === 1 || item === totalPages || (item >= page - 1 && item <= page + 1)),
@@ -232,7 +229,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
                   key={movie.slug}
                   type="button"
                   onClick={() => setFeaturedIndex(index)}
-                  className={`h-1.5 rounded-full transition-all ${index === featuredIndex ? 'w-6 bg-primary shadow-[0_0_12px_rgba(6,182,212,0.55)]' : 'w-1.5 bg-white/22'}`}
+                  className={`h-1.5 rounded-full transition-all ${index === activeFeaturedIndex ? 'w-6 bg-primary shadow-[0_0_12px_rgba(6,182,212,0.55)]' : 'w-1.5 bg-white/22'}`}
                   aria-label={`Phim noi bat ${index + 1}`}
                 />
               ))}
