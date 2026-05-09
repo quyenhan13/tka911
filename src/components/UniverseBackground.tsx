@@ -8,7 +8,7 @@ const UniverseBackground: React.FC = () => {
 
     const colors = ['#00f2ff', '#39ffba', '#ffffff', '#7000ff', '#ff00d4'];
     const stream = containerRef.current;
-    let emitterTimer: any = null;
+    let emitterTimer: ReturnType<typeof window.setInterval> | null = null;
     const isMobile = window.innerWidth < 768;
 
     const spawnParticle = () => {
@@ -56,7 +56,7 @@ const UniverseBackground: React.FC = () => {
 
     const stopEmitter = () => {
       if (emitterTimer === null) return;
-      clearInterval(emitterTimer);
+      window.clearInterval(emitterTimer);
       emitterTimer = null;
     };
 

@@ -31,7 +31,7 @@ export const getFavorites = (): FavoriteItem[] => {
   if (!data) return [];
   try {
     return JSON.parse(data);
-  } catch (e) {
+  } catch {
     return [];
   }
 };

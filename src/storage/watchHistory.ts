@@ -27,7 +27,7 @@ export const getHistory = (): HistoryItem[] => {
   if (!data) return [];
   try {
     return JSON.parse(data);
-  } catch (e) {
+  } catch {
     return [];
   }
 };
