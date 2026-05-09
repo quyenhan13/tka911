@@ -11,6 +11,11 @@ const config: CapacitorConfig = {
     contentInset: 'never',
     backgroundColor: '#050510',
     allowsInlineMediaPlayback: true
+  },
+  plugins: {
+    CapacitorHttp: {
+      enabled: true
+    }
   }
 };
 

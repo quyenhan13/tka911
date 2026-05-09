@@ -597,6 +597,10 @@ const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: FileView
             {/* Main Action Button */}
             <button
               onClick={() => {
+                if (file.source === 'web') {
+                  window.open(file.webViewLink || shareLink, '_blank');
+                  return;
+                }
                 const savedUser = localStorage.getItem('vteen_user');
                 const apiToken = JSON.parse(savedUser || '{}')?.api_token;
                 const downloadUrl = `${CONFIG.API_BASE_URL}/download.php?id=${file.id}&account=${file.account_source}&name=${encodeURIComponent(file.name)}&api_token=${apiToken}`;
@@ -679,7 +683,7 @@ const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDele
       />
 
       {/* Admin Quick Actions */}
-      {isAdmin && (
+      {isAdmin && file.source === 'api' && (
         <div className="absolute top-12 left-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-[-10px] group-hover:translate-x-0 z-30">
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -761,6 +765,15 @@ const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDele
             </span>
           </div>
         </div>
+
+        {file.expiresText && (
+          <div className="mt-1 inline-flex w-fit items-center gap-1.5 rounded-lg border border-red-400/15 bg-red-500/10 px-2 py-1 text-[9px] font-black text-red-300">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3">
+              <path d="M12 6v6l4 2M12 22a10 10 0 110-20 10 10 0 010 20z" />
+            </svg>
+            {file.expiresText}
+          </div>
+        )}
 
         {/* Buttons - Premium Style */}
         <div className="flex gap-2 mt-3">
