@@ -83,7 +83,7 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
             function onYouTubeIframeAPIReady() {
               player = new YT.Player('player', {
                 height: '100%', width: '100%', videoId: '${id}',
-                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': window.location.origin },
+                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': 'https://vteen.shop' },
                 events: { 'onReady': function(e){ e.target.playVideo(); } }
               });
             }
@@ -302,7 +302,7 @@ const prepareServerOneHtml = (html: string) => {
             function onYouTubeIframeAPIReady() {
               player = new YT.Player('player', {
                 height: '100%', width: '100%', videoId: '${id}',
-                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': window.location.origin },
+                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': 'https://vteen.shop' },
                 events: { 'onReady': function(e){ e.target.playVideo(); } }
               });
             }
