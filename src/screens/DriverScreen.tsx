@@ -131,9 +131,10 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
     };
   };
 
-  const formatThumbnail = (url?: string) => {
-    if (!url) return null;
-    return url.replace('=s220', '=s400');
+  const formatThumbnail = (file: DriveFile) => {
+    if (!file.thumbnailLink) return null;
+    // Sử dụng link thumbnail chính thức của Google Drive qua ID để ổn định hơn
+    return `https://drive.google.com/thumbnail?id=${file.id}&sz=w400`;
   };
 
   return (
