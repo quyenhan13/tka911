@@ -260,6 +260,16 @@ const prepareServerOneHtml = (html: string) => {
     finalSrc = new URL(iframeSrc, CONFIG.SITE_BASE_URL).toString();
   }
 
+  // MỚI: Trả về mã HTML nội bộ cho YouTube
+  if (finalSrc.includes('youtube.com') || finalSrc.includes('youtu.be')) {
+    let id = '';
+    if (finalSrc.includes('v=')) {
+      id = new URL(finalSrc).searchParams.get('v') || '';
+    } else {
+      const parts = finalSrc.split('/');
+      id = parts[parts.length - 1].split('?')[0];
+    }
+    
     if (id && id.length === 11) {
       // Trả về mã HTML trực tiếp để nhúng (srcDoc), tránh lỗi SAMEORIGIN từ server
       return `
@@ -285,6 +295,7 @@ const prepareServerOneHtml = (html: string) => {
         </html>
       `;
     }
+  }
   
   return finalSrc;
 };
