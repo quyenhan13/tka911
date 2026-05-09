@@ -406,7 +406,7 @@ const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: any) => 
             <div className="w-full aspect-video bg-black/40 rounded-[2rem] border border-white/5 flex items-center justify-center overflow-hidden mb-8 relative group">
               {isImg ? (
                 <img
-                  src={formatThumbnail(file.thumbnailLink)}
+                  src={formatThumbnail(file)}
                   className="w-full h-full object-contain p-2"
                   alt=""
                 />
@@ -536,7 +536,7 @@ const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDele
         {file.thumbnailLink ? (
           <>
             <img
-              src={formatThumbnail(file.thumbnailLink)}
+              src={formatThumbnail(file)}
               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-115"
               alt=""
             />
