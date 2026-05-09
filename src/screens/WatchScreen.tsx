@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ScreenOrientation as OrientationPlugin } from '@capacitor/screen-orientation';
 import { getHistory, removeFromHistory, saveToHistory } from '../storage/watchHistory';
 import { toggleFavorite, isFavorite } from '../storage/favorites';
@@ -138,7 +138,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     }
   };
 
-  const fetchDetails = async () => {
+  const fetchDetails = useCallback(async () => {
     try {
       const savedUser = localStorage.getItem('vteen_user');
       const apiToken = savedUser ? JSON.parse(savedUser)?.api_token : null;
@@ -162,7 +162,15 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         if (result.data.episodes.length > 0) {
           const saved = getHistory().find(item => item.slug === slug);
           const savedEp = saved ? result.data.episodes.find((ep: Episode) => ep.episode === saved.lastEpisode) : null;
-          selectEpisode(savedEp || result.data.episodes[0], result.data);
+          const nextEp = savedEp || result.data.episodes[0];
+          setCurrentEp(nextEp);
+          setActiveServer(1);
+          saveToHistory({
+            slug,
+            title: result.data.title,
+            poster: result.data.poster,
+            lastEpisode: nextEp.episode
+          });
           
           // Lưu vào lịch sử
         }
@@ -179,7 +187,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     } finally {
       setLoading(false);
     }
-  };
+  }, [onUnauthorized, slug]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -187,7 +195,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       fetchDetails();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [slug]);
+  }, [fetchDetails, slug]);
 
   const currentEmbedUrl = activeServer === 1 ? currentEp?.embed_url : currentEp?.embed_url_2;
   const currentHost = activeServer === 1 ? currentEp?.embed_host : currentEp?.embed_host_2;
