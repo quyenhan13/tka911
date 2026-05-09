@@ -1,334 +1,51 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import BottomTabs from './components/BottomTabs'
 import HomeScreen from './screens/HomeScreen'
 import WatchScreen from './screens/WatchScreen'
 import LoginScreen from './screens/LoginScreen'
 import ProfileScreen from './screens/ProfileScreen'
-import TubeScreen from './screens/TubeScreen'
 import DriverScreen from './screens/DriverScreen'
 import UniverseBackground from './components/UniverseBackground'
 import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
 
-interface Video {
-  id: string;
-  title: string;
-  thumbnail: string;
-  channelTitle: string;
+interface User {
+  api_token: string;
+  display_name?: string;
+  role?: string;
+  [key: string]: unknown;
 }
 
-const fmt = (s: number) => {
-  if (typeof s !== 'number' || !Number.isFinite(s) || s < 0) return '0:00';
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${sec.toString().padStart(2, '0')}`;
+const isUser = (value: unknown): value is User => {
+  if (!value || typeof value !== 'object') return false;
+  return typeof (value as { api_token?: unknown }).api_token === 'string';
+};
+
+const getSavedUser = () => {
+  const savedUser = localStorage.getItem('vteen_user');
+  if (!savedUser) return null;
+
+  try {
+    const parsed = JSON.parse(savedUser);
+    if (isUser(parsed)) return parsed;
+  } catch {
+    localStorage.removeItem('vteen_user');
+  }
+
+  return null;
 };
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [watchingSlug, setWatchingSlug] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(() => getSavedUser());
 
-  const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [tubeExpanded, setTubeExpanded] = useState(false);
-  const [tubeConnecting, setTubeConnecting] = useState(false);
-  
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const progressInterval = useRef<any>(null);
-  const playlistRef = useRef<Video[]>([]);
-  const ytListeningRef = useRef(false);
-  const pendingPlayRef = useRef<Video | null>(null);
-  const playRetryTimersRef = useRef<number[]>([]);
-  const ytSendPlayRef = useRef<(video: Video) => void>(() => {});
-  const iframeLoadGenRef = useRef(0);
-  const playNextRef = useRef<(() => void) | undefined>(undefined);
-  const playPrevRef = useRef<(() => void) | undefined>(undefined);
-
-  const bootVideoId = 'jfKfPfyJRdk';
-  
-  const iframeSrc = useMemo(() => {
-    const id = currentVideo?.id ?? bootVideoId;
-    // Dùng trình phát chính thức của vteen.shop
-    return `https://vteen.shop/yt_player.php?id=${id}&origin=${encodeURIComponent(window.location.origin)}`;
-  }, [currentVideo?.id]);
-
-  // Send postMessage to YouTube iframe
-  const sendCommand = useCallback((func: string, args?: any[]) => {
-    if (!iframeRef.current?.contentWindow) return;
-    try {
-      // Gửi cho cả 2 định dạng để chắc chắn YouTube nhận được
-      const msg = { event: 'command', func, args: args || [] };
-      iframeRef.current.contentWindow.postMessage(msg, '*');
-      iframeRef.current.contentWindow.postMessage(JSON.stringify(msg), '*');
-      
-      // Lệnh trực tiếp cho Proxy yt_player.php
-      iframeRef.current.contentWindow.postMessage({ func, args: args || [] }, '*');
-    } catch (e) {}
-  }, []);
-
-  const stopProgressLoop = useCallback(() => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
-    }
-  }, []);
-
-  const handleSeek = useCallback(
-    (seconds: number) => {
-      if (!Number.isFinite(seconds)) return;
-      const nextTime = Math.max(0, duration > 0 ? Math.min(seconds, duration) : seconds);
-      setCurrentTime(nextTime);
-      sendCommand('seekTo', [nextTime, true]);
-      sendCommand('getCurrentTime');
-    },
-    [duration, sendCommand]
-  );
-
-  const ytSendPlay = useCallback(
-    (video: Video) => {
-      playRetryTimersRef.current.forEach((t) => window.clearTimeout(t));
-      playRetryTimersRef.current = [];
-      const perform = () => {
-        sendCommand('loadVideoById', [video.id]);
-        sendCommand('playVideo');
-        sendCommand('unMute');
-        sendCommand('setVolume', [100]);
-        sendCommand('getDuration');
-        sendCommand('getCurrentTime');
-      };
-
-      // Chỉ gọi 1 lần duy nhất để tránh bị ngắt nhạc (vấp)
-      perform();
-      [180, 500, 1000, 1800].forEach((delay) => {
-        const timer = window.setTimeout(perform, delay);
-        playRetryTimersRef.current.push(timer);
-      });
-      const watchdog = window.setTimeout(() => {
-        sendCommand('getDuration');
-        sendCommand('getCurrentTime');
-        sendCommand('playVideo');
-        sendCommand('unMute');
-      }, 4000);
-      playRetryTimersRef.current.push(watchdog);
-    },
-    [sendCommand]
-  );
-
-  const playVideo = useCallback(
-    (video: Video, list?: Video[]) => {
-      if (list) playlistRef.current = list;
-      pendingPlayRef.current = video;
-      setCurrentVideo(video);
-      setCurrentTime(0);
-      setDuration(0);
-      setTubeConnecting(true);
-      setIsPlaying(false);
-      if (activeTab === 'tube') setTubeExpanded(true);
-      ytSendPlay(video);
-      if (ytListeningRef.current) {
-        pendingPlayRef.current = null;
-        return;
-      }
-      // Nếu chưa listening (lần đầu), nó sẽ tự chạy qua onLoad của iframe
-    },
-    [ytSendPlay, activeTab]
-  );
-
-  const playNext = useCallback(() => {
-    const pl = playlistRef.current;
-    setCurrentVideo(cv => {
-      if (!cv || pl.length === 0) return cv;
-      const idx = pl.findIndex(v => v.id === cv.id);
-      const next = pl[(idx + 1) % pl.length];
-      setTimeout(() => playVideo(next), 0);
-      return cv;
-    });
-  }, [playVideo]);
-
-  const playPrev = useCallback(() => {
-    const pl = playlistRef.current;
-    setCurrentVideo(cv => {
-      if (!cv || pl.length === 0) return cv;
-      const idx = pl.findIndex(v => v.id === cv.id);
-      const prev = pl[(idx - 1 + pl.length) % pl.length];
-      setTimeout(() => playVideo(prev), 0);
-      return cv;
-    });
-  }, [playVideo]);
-
-  useEffect(() => {
-    playNextRef.current = playNext;
-    playPrevRef.current = playPrev;
-  }, [playNext, playPrev]);
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem('vteen_user');
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        if (parsed?.api_token) setUser(parsed);
-      } catch (e) {
-        localStorage.removeItem('vteen_user');
-      }
-    }
-
-    const onMessage = (e: MessageEvent) => {
-      try {
-        // YT sends JSON string or object
-        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-        // Xử lý bộ giao tiếp tùy chỉnh từ Proxy (VTEEN_PROGRESS)
-        if (data.type === 'VTEEN_PROGRESS') {
-          if (typeof data.currentTime === 'number') setCurrentTime(data.currentTime);
-          if (typeof data.duration === 'number') setDuration(data.duration);
-          
-          // Cập nhật trạng thái chơi nhạc từ proxy
-          if (data.state === 1) {
-            setTubeConnecting(false);
-            setIsPlaying(true);
-          } else if (data.state === 2) {
-            setTubeConnecting(false);
-            setIsPlaying(false);
-          }
-          return;
-        }
-
-        if (data.type === 'VTEEN_STATE') {
-          if (data.state === 1) {
-            setTubeConnecting(false);
-            setIsPlaying(true);
-          } else if (data.state === 2) {
-            setTubeConnecting(false);
-            setIsPlaying(false);
-          }
-          else if (data.state === 0) playNextRef.current?.();
-          return;
-        }
-
-        if (data.event === 'listening') {
-          ytListeningRef.current = true;
-          const pending = pendingPlayRef.current;
-          if (pending) {
-            pendingPlayRef.current = null;
-            ytSendPlayRef.current(pending);
-          }
-        }
-
-        if (data.event === 'onStateChange') {
-          const state = data.info; // 1=PLAYING, 2=PAUSED, 0=ENDED
-          if (state === 1) {
-            setTubeConnecting(false);
-            setIsPlaying(true);
-          } else if (state === 2) {
-            setTubeConnecting(false);
-            setIsPlaying(false);
-          } else if (state === 0) {
-            setTubeConnecting(false);
-            playNextRef.current?.();
-          }
-        }
-        
-        if (data.event === 'listening' || data.event === 'onReady' || data.type === 'VTEEN_READY') {
-          ytListeningRef.current = true;
-          const pending = pendingPlayRef.current;
-          if (pending) {
-            pendingPlayRef.current = null;
-            ytSendPlayRef.current(pending);
-          }
-        }
-        
-        if (data.event === 'infoDelivery' && data.info) {
-          const ct = data.info.currentTime;
-          if (typeof ct === 'number' && Number.isFinite(ct) && ct >= 0) {
-            setCurrentTime(ct);
-          }
-          const dur = data.info.duration;
-          if (typeof dur === 'number' && Number.isFinite(dur) && dur > 0) {
-            setDuration(dur);
-          }
-        }
-      } catch (err) {
-        // Silent error
-      }
-    };
-
-    window.addEventListener('message', onMessage);
-    return () => {
-      window.removeEventListener('message', onMessage);
-      stopProgressLoop();
-      playRetryTimersRef.current.forEach((t) => window.clearTimeout(t));
-      playRetryTimersRef.current = [];
-    };
-  }, [stopProgressLoop]);
-
-  useEffect(() => {
-    ytSendPlayRef.current = ytSendPlay;
-  }, [ytSendPlay]);
-
-  useEffect(() => {
-    if (!currentVideo) {
-      setTubeExpanded(false);
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-        progressInterval.current = null;
-      }
+  const handleLoginSuccess = (userData: unknown) => {
+    if (!isUser(userData)) {
+      localStorage.removeItem('vteen_user');
       return;
     }
-    if (progressInterval.current) clearInterval(progressInterval.current);
-    progressInterval.current = setInterval(() => {
-      sendCommand('getCurrentTime');
-      sendCommand('getDuration');
-    }, 500);
-    return () => {
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-        progressInterval.current = null;
-      }
-    };
-  }, [currentVideo?.id, sendCommand]);
-
-  const togglePlay = useCallback(() => {
-    if (isPlaying) {
-      sendCommand('pauseVideo');
-      setIsPlaying(false);
-    } else {
-      sendCommand('unMute');
-      sendCommand('setVolume', [100]);
-      sendCommand('playVideo');
-      setIsPlaying(true);
-    }
-  }, [isPlaying, sendCommand]);
-
-  useEffect(() => {
-    if (!('mediaSession' in navigator) || !currentVideo) return;
-    navigator.mediaSession.metadata = new window.MediaMetadata({
-      title: currentVideo.title,
-      artist: currentVideo.channelTitle,
-      artwork: [{ src: currentVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }]
-    });
-    const handlePlay = () => {
-      sendCommand('unMute');
-      sendCommand('setVolume', [100]);
-      sendCommand('playVideo');
-      setIsPlaying(true);
-    };
-
-    navigator.mediaSession.setActionHandler('play', handlePlay);
-    navigator.mediaSession.setActionHandler('pause', () => {
-      sendCommand('pauseVideo');
-      setIsPlaying(false);
-    });
-    navigator.mediaSession.setActionHandler('nexttrack', () => playNextRef.current?.());
-    navigator.mediaSession.setActionHandler('previoustrack', () => playPrevRef.current?.());
-    
-    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-  }, [currentVideo, isPlaying, sendCommand]);
-
-  const handleLoginSuccess = (userData: any) => {
-    if (!userData?.api_token) { localStorage.removeItem('vteen_user'); return; }
     setUser(userData);
     localStorage.setItem('vteen_user', JSON.stringify(userData));
   };
@@ -338,13 +55,7 @@ function App() {
     localStorage.removeItem('vteen_user');
     setActiveTab('home');
     setWatchingSlug(null);
-    setCurrentVideo(null);
-    setTubeExpanded(false);
-    pendingPlayRef.current = null;
-    ytListeningRef.current = false;
   };
-
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className="h-[100dvh] text-white relative overflow-hidden bg-transparent">
@@ -364,11 +75,6 @@ function App() {
               className="h-full overflow-y-auto overscroll-none pb-32"
             >
               {activeTab === 'home' && <HomeScreen onWatch={(slug: string) => setWatchingSlug(slug)} />}
-              {activeTab === 'tube' && (
-                <ErrorBoundary>
-                  <TubeScreen currentVideo={currentVideo} playVideo={playVideo} />
-                </ErrorBoundary>
-              )}
               {activeTab === 'driver' && (
                 <ErrorBoundary>
                   <DriverScreen user={user} />
@@ -379,193 +85,6 @@ function App() {
               )}
             </motion.main>
           </AnimatePresence>
-
-          <AnimatePresence>
-            {currentVideo && !watchingSlug && (
-              <motion.div
-                initial={{ y: 100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 100, opacity: 0 }}
-                className="fixed bottom-[5.8rem] left-0 right-0 z-[60] px-3 pointer-events-none"
-              >
-                <div className="bg-[#0f141f]/80 backdrop-blur-xl border border-white/5 shadow-[0_-15px_50px_rgba(0,0,0,0.6)] overflow-hidden rounded-2xl pointer-events-auto relative">
-                  <div
-                    className="h-1 w-full bg-white/10 relative cursor-pointer group"
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const ratio = (e.clientX - rect.left) / rect.width;
-                      handleSeek(ratio * (duration || 0));
-                    }}
-                  >
-                    <div
-                      className="absolute h-full bg-primary shadow-[0_0_8px_#06b6d4] transition-all"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between px-3 py-2 gap-3">
-                    <button
-                      type="button"
-                      className="flex items-center gap-3 flex-1 min-w-0 text-left active:opacity-80"
-                      onClick={() => setTubeExpanded(true)}
-                    >
-                      <div className="relative w-9 h-9 flex-shrink-0">
-                        <img
-                          src={currentVideo.thumbnail}
-                          alt=""
-                          className={`w-full h-full rounded-lg object-cover border border-white/10 ${isPlaying ? 'animate-[spin_8s_linear_infinite]' : ''}`}
-                          style={{ borderRadius: '50%' }}
-                        />
-                        {isPlaying && (
-                          <div className="absolute inset-0 rounded-full border-2 border-primary/50 animate-ping" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-[12px] font-bold text-white truncate">{currentVideo.title}</h4>
-                        <p className="text-[10px] text-primary/80 truncate">{currentVideo.channelTitle}</p>
-                      </div>
-                    </button>
-
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <button onClick={playPrev} className="text-white/40 active:text-white transition-colors p-1">
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-                      </button>
-                      <button
-                        onClick={togglePlay}
-                        className="w-9 h-9 bg-white text-black rounded-full flex items-center justify-center active:scale-90 transition-transform shadow-lg"
-                      >
-                        {tubeConnecting ? (
-                          <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                        ) : isPlaying ? (
-                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                        ) : (
-                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 ml-0.5"><path d="M8 5v14l11-7z"/></svg>
-                        )}
-                      </button>
-                      <button onClick={playNext} className="text-white/40 active:text-white transition-colors p-1">
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <AnimatePresence>
-            {tubeExpanded && currentVideo && (
-              <motion.div
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed inset-0 z-[900] bg-[#050510]/95 backdrop-blur-2xl flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
-              >
-                <div className="flex shrink-0 justify-between items-center px-6 pt-4">
-                  <button
-                    onClick={() => setTubeExpanded(false)}
-                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 active:bg-white/10"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
-                      <path d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  <span className="text-[10px] font-black tracking-widest text-primary/40 uppercase">VTEEN MUSIC</span>
-                  <div className="w-10" />
-                </div>
-
-                <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 overflow-hidden">
-                  <div className="relative">
-                    <motion.div
-                      animate={{ rotate: isPlaying ? 360 : 0 }}
-                      transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
-                      className="relative w-[75vw] aspect-square max-w-sm rounded-full shadow-[0_0_80px_rgba(0,0,0,0.8)] border-8 border-[#111]"
-                    >
-                      <img
-                        src={currentVideo.thumbnail}
-                        className="w-full h-full rounded-full object-cover shadow-2xl"
-                        alt=""
-                      />
-                      <div className="absolute inset-0 rounded-full border-[20px] border-black/10 pointer-events-none" />
-                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#050510] border-4 border-white/10 shadow-inner" />
-                    </motion.div>
-                  </div>
-
-                  <div className="mt-12 text-center w-full max-w-sm">
-                    <h2 className="text-xl font-bold text-white line-clamp-2 leading-tight">{currentVideo.title}</h2>
-                    <p className="text-primary mt-2 font-medium tracking-wide">{currentVideo.channelTitle}</p>
-                  </div>
-                </div>
-
-                <div className="px-8 pb-12 w-full max-lg mx-auto">
-                  <div className="space-y-3">
-                    <div
-                      className="h-1.5 w-full bg-white/10 rounded-full relative cursor-pointer group"
-                      onClick={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const ratio = (e.clientX - rect.left) / rect.width;
-                        handleSeek(ratio * (duration || 0));
-                      }}
-                    >
-                      <div
-                        className="absolute h-full bg-primary rounded-full shadow-[0_0_15px_#06b6d4]"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-[11px] font-mono text-white/30 tracking-tighter">
-                      <span>{fmt(currentTime)}</span>
-                      <span>{fmt(duration)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-8">
-                    <div className="flex items-center gap-8 mx-auto">
-                      <button onClick={playPrev} className="text-white/60 active:text-white active:scale-90 transition-all">
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-                      </button>
-                      <button
-                        onClick={togglePlay}
-                        className="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all"
-                      >
-                        {tubeConnecting ? (
-                          <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
-                        ) : isPlaying ? (
-                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                        ) : (
-                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 ml-1"><path d="M8 5v14l11-7z"/></svg>
-                        )}
-                      </button>
-                      <button onClick={playNext} className="text-white/60 active:text-white active:scale-90 transition-all">
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="fixed bottom-0 right-0 z-[-1] overflow-hidden" style={{ width: '1px', height: '1px', opacity: 0.01 }}>
-            <iframe
-              ref={iframeRef}
-              src={iframeSrc}
-              allow="autoplay; encrypted-media; fullscreen"
-              title="yt-player"
-              className="w-full h-full"
-              onLoad={() => {
-                ytListeningRef.current = false;
-                const gen = ++iframeLoadGenRef.current;
-                window.setTimeout(() => {
-                  if (gen !== iframeLoadGenRef.current) return;
-                  const pending = pendingPlayRef.current;
-                  if (pending) {
-                    pendingPlayRef.current = null;
-                    ytSendPlayRef.current(pending);
-                  }
-                }, 800);
-              }}
-            />
-          </div>
 
           <AnimatePresence>
             {watchingSlug && (
