@@ -426,11 +426,15 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           throw new Error('Khong tim thay server web');
         }
 
-        const embedHtml = await fetchVteenText(toVteenPath(servers[selectedKey]));
+        const embedPath = toVteenPath(servers[selectedKey]);
+        const embedUrl = embedPath.startsWith('http') ? embedPath : `${CONFIG.SITE_BASE_URL}${embedPath}`;
 
         if (cancelled) return;
         setWebServers(servers);
+
+        // Nếu là Server 1 (VIP), chúng ta cần kiểm tra xem nó có phải YouTube không
         if (selectedKey === '1') {
+          const embedHtml = await fetchVteenText(embedPath);
           const vipSrc = prepareServerOneHtml(embedHtml);
           const videoSrc = extractVideoSource(embedHtml);
           
@@ -439,14 +443,14 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           } else if (videoSrc) {
             setWebPlayer({ html: null, src: null, videoSrc });
           } else if (currentEmbedSrc) {
-            // Fallback ngay lập tức nếu không tìm thấy iframe/video nhưng có link API
             setWebPlayer({ html: null, src: null, videoSrc: null });
           } else {
-            throw new Error('Không tìm thấy trình phát Server VIP');
+            // Nếu không phân tích được, dùng thẳng URL của server
+            setWebPlayer({ html: null, src: embedUrl, videoSrc: null });
           }
         } else {
-          const videoSrc = extractVideoSource(embedHtml);
-          setWebPlayer({ html: videoSrc ? null : prepareEmbedHtml(embedHtml), src: null, videoSrc });
+          // Các server khác, dùng thẳng URL để tránh trắng màn
+          setWebPlayer({ html: null, src: embedUrl, videoSrc: null });
         }
 
         const selectedServer = Number(selectedKey);
@@ -537,7 +541,8 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
               <iframe 
                 key={`${currentEp.episode}-${activeServer}-${webPlayer.src}`}
                 src={webPlayer.src}
-                className="absolute inset-0 w-full h-full border-0 bg-black"
+                className="absolute inset-0 w-full h-full border-0"
+                style={{ backgroundColor: 'black !important', zIndex: 1 }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                 allowFullScreen
                 referrerPolicy="strict-origin-when-cross-origin"
@@ -547,7 +552,8 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
               <iframe 
                 key={`${currentEp.episode}-${activeServer}-${webServers[String(activeServer)] || 'web'}`}
                 srcDoc={webPlayer.html}
-                className="absolute inset-0 w-full h-full border-0 bg-black"
+                className="absolute inset-0 w-full h-full border-0"
+                style={{ backgroundColor: 'black !important', zIndex: 1 }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                 allowFullScreen
                 referrerPolicy="strict-origin-when-cross-origin"
@@ -557,7 +563,8 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
               <iframe 
                 key={`${currentEp.episode}-${activeServer}-api`}
                 src={currentEmbedSrc}
-                className="absolute inset-0 w-full h-full border-0 bg-black"
+                className="absolute inset-0 w-full h-full border-0"
+                style={{ backgroundColor: 'black !important', zIndex: 1 }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                 allowFullScreen
                 referrerPolicy="strict-origin-when-cross-origin"
