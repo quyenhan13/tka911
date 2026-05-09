@@ -166,10 +166,6 @@ const buildWebWatchPath = (slug: string, episode: string) => {
   return `/xem.php?${params.toString()}`;
 };
 
-const openWebWatchInApp = (slug: string, episode: string) => {
-  window.location.assign(`${CONFIG.SITE_BASE_URL}/xem/${encodeURIComponent(slug)}/${encodeURIComponent(episode)}`);
-};
-
 const fetchVteenText = async (pathOrUrl: string) => {
   const url = pathOrUrl.startsWith('http') ? pathOrUrl : `${CONFIG.SITE_BASE_URL}${pathOrUrl}`;
 
