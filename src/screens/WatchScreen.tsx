@@ -394,7 +394,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
         if (cancelled) return;
         setWebServers(servers);
-        setWebPlayerHtml(prepareEmbedHtml(embedHtml));
+        setWebPlayerHtml(selectedKey === '1' ? prepareServerOneHtml(embedHtml) : prepareEmbedHtml(embedHtml));
 
         const selectedServer = Number(selectedKey);
         if (Number.isFinite(selectedServer) && selectedServer !== activeServer) {
@@ -510,9 +510,9 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       {/* Server Selector Buttons */}
       <div className="shrink-0 px-6 py-4 flex gap-3 border-b border-white/5">
         <button 
-          disabled={playerLoading || (!webServers['1'] && !currentEp?.embed_url)}
+          disabled={playerLoading}
           onClick={() => setActiveServer(1)}
-          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${playerLoading || (!webServers['1'] && !currentEp?.embed_url) ? 'opacity-30 grayscale' : activeServer === 1 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-card text-text-dim border border-white/5'}`}
+          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${playerLoading ? 'opacity-30 grayscale' : activeServer === 1 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-card text-text-dim border border-white/5'}`}
         >
           SERVER VIP
         </button>
