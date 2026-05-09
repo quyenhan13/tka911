@@ -420,13 +420,17 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         setWebServers(servers);
         if (selectedKey === '1') {
           const vipSrc = prepareServerOneHtml(embedHtml);
+          const videoSrc = extractVideoSource(embedHtml);
+          
           if (vipSrc) {
             setWebPlayer({ html: null, src: vipSrc, videoSrc: null });
+          } else if (videoSrc) {
+            setWebPlayer({ html: null, src: null, videoSrc });
           } else if (currentEmbedSrc) {
-            // Fallback ngay lập tức nếu không tìm thấy iframe nhưng có link API
+            // Fallback ngay lập tức nếu không tìm thấy iframe/video nhưng có link API
             setWebPlayer({ html: null, src: null, videoSrc: null });
           } else {
-            throw new Error('Khong tim thay iframe server VIP');
+            throw new Error('Không tìm thấy trình phát Server VIP');
           }
         } else {
           const videoSrc = extractVideoSource(embedHtml);
@@ -443,7 +447,11 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           setWebPlayer({ html: null, src: null, videoSrc: null });
           // Chỉ hiện lỗi nếu KHÔNG có link API dự phòng
           if (!currentEmbedSrc) {
-            setPlayerError(err instanceof Error ? err.message : 'Khong tai duoc player web VTEEN');
+            setPlayerError(err instanceof Error ? err.message : 'Không tải được trình phát VTEEN');
+          } else {
+            // Đảm bảo xóa trạng thái lỗi nếu có link fallback để iframe API có thể hiển thị
+            setWebPlayer({ html: null, src: null, videoSrc: null });
+            setPlayerError(null);
           }
         }
       } finally {
