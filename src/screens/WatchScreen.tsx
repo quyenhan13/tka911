@@ -281,7 +281,6 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         lastEpisode: ep.episode
       });
     }
-    openWebWatchInApp(slug, ep.episode);
   };
 
   const handleToggleFav = () => {
@@ -329,7 +328,6 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
             poster: movieDetails.poster,
             lastEpisode: nextEp.episode
           });
-          openWebWatchInApp(slug, nextEp.episode);
           
           // Lưu vào lịch sử
         } else {
