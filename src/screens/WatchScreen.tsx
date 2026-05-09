@@ -65,8 +65,24 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
     }
     
     if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) {
-      // Dùng file proxy trên server để YouTube cho phép phát phim
-      return `https://vteen.shop/yt_player.php?id=${id}`;
+      // Trả về mã HTML trực tiếp để nhúng (srcDoc), tránh lỗi SAMEORIGIN và 153
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center}</style>
+        </head>
+        <body>
+          <iframe 
+            width="100%" height="100%" 
+            src="https://www.youtube.com/embed/${id}?autoplay=1&mute=1&origin=https://vteen.shop&playsinline=1&rel=0&modestbranding=1" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+            allowfullscreen>
+          </iframe>
+        </body>
+        </html>
+      `;
     }
   }
 
@@ -98,20 +114,9 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
     src = new URL(value, `${CONFIG.SITE_BASE_URL}/`).toString();
   }
 
-  // Đảm bảo luôn dùng https cho vteen.shop
+  // 3. Đảm bảo luôn dùng https và không dùng proxy cho video trên thiết bị thật
   if (src.includes('vteen.shop')) {
     src = src.replace('http://', 'https://');
-  }
-
-  if (import.meta.env.DEV) {
-    try {
-      const url = new URL(src);
-      if (url.origin === CONFIG.SITE_BASE_URL) {
-        return `/__vteen${url.pathname}${url.search}${url.hash}`;
-      }
-    } catch {
-      return src;
-    }
   }
 
   return src;
@@ -260,8 +265,24 @@ const prepareServerOneHtml = (html: string) => {
     }
     
     if (id && id.length === 11) {
-      // Dùng file proxy trên server để YouTube cho phép phát phim
-      return `https://vteen.shop/yt_player.php?id=${id}`;
+      // Trả về mã HTML trực tiếp để nhúng (srcDoc), tránh lỗi SAMEORIGIN và 153
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center}</style>
+        </head>
+        <body>
+          <iframe 
+            width="100%" height="100%" 
+            src="https://www.youtube.com/embed/${id}?autoplay=1&mute=1&origin=https://vteen.shop&playsinline=1&rel=0&modestbranding=1" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+            allowfullscreen>
+          </iframe>
+        </body>
+        </html>
+      `;
     }
   }
   
@@ -425,10 +446,10 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         }
 
         const embedPath = toVteenPath(servers[selectedKey]);
-
         if (cancelled) return;
         setWebServers(servers);
 
+        // SỬ DỤNG srcDoc CHO TẤT CẢ CÁC SERVER ĐỂ VƯỢT LỖI X-Frame-Options (Từ chối kết nối)
         const embedHtml = await fetchVteenText(embedPath);
         
         if (selectedKey === '1') {
@@ -436,28 +457,21 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           const videoSrc = extractVideoSource(embedHtml);
           
           if (vipSrc) {
-            // Kiểm tra xem là link hay là mã HTML (srcDoc)
             const isHtml = vipSrc.trim().startsWith('<!DOCTYPE') || vipSrc.trim().startsWith('<html');
-            setWebPlayer({ 
-              html: isHtml ? vipSrc : null, 
-              src: isHtml ? null : vipSrc, 
-              videoSrc: null 
-            });
+            setWebPlayer({ html: isHtml ? vipSrc : null, src: isHtml ? null : vipSrc, videoSrc: null });
           } else if (videoSrc) {
             setWebPlayer({ html: null, src: null, videoSrc });
           } else {
             setWebPlayer({ html: prepareEmbedHtml(embedHtml), src: null, videoSrc: null });
           }
         } else {
+          // Server 2 và các server khác cũng dùng srcDoc để không bị chặn
           const videoSrc = extractVideoSource(embedHtml);
-          const prepared = prepareEmbedHtml(embedHtml);
-          const isHtml = prepared.trim().startsWith('<!DOCTYPE') || prepared.trim().startsWith('<html');
-          
-          setWebPlayer({ 
-            html: videoSrc ? null : (isHtml ? prepared : null), 
-            src: videoSrc ? null : (isHtml ? null : prepared), 
-            videoSrc 
-          });
+          if (videoSrc) {
+            setWebPlayer({ html: null, src: null, videoSrc });
+          } else {
+            setWebPlayer({ html: prepareEmbedHtml(embedHtml), src: null, videoSrc: null });
+          }
         }
 
         const selectedServer = Number(selectedKey);
@@ -466,15 +480,21 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         }
       } catch (err) {
         if (!cancelled) {
-          setWebServers({});
-          setWebPlayer({ html: null, src: null, videoSrc: null });
-          // Chỉ hiện lỗi nếu KHÔNG có link API dự phòng
-          if (!currentEmbedSrc) {
-            setPlayerError(err instanceof Error ? err.message : 'Không tải được trình phát VTEEN');
-          } else {
-            // Đảm bảo xóa trạng thái lỗi nếu có link fallback để iframe API có thể hiển thị
-            setWebPlayer({ html: null, src: null, videoSrc: null });
+          const errMsg = err instanceof Error ? err.message : 'Lỗi không xác định';
+          console.error('Web player error:', errMsg);
+          
+          // Dự phòng: Nếu lỗi web player, dùng link từ API
+          if (currentEmbedSrc) {
+            const isHtml = currentEmbedSrc.trim().startsWith('<!DOCTYPE') || currentEmbedSrc.trim().startsWith('<html');
+            setWebPlayer({ 
+              html: isHtml ? currentEmbedSrc : null, 
+              src: isHtml ? null : currentEmbedSrc, 
+              videoSrc: null 
+            });
+            // Không hiện lỗi nếu có link dự phòng chạy được
             setPlayerError(null);
+          } else {
+            setPlayerError(`Lỗi trình phát: ${errMsg}`);
           }
         }
       } finally {
@@ -491,7 +511,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#05070a]">
         <UniverseBackground />
         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
@@ -500,7 +520,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
   if (error || !details) {
     return (
-      <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center p-10 text-center">
+      <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center p-10 text-center bg-[#05070a]">
         <UniverseBackground />
         <p className="text-text-dim mb-4">{error || 'Không tìm thấy phim'}</p>
         <button onClick={onBack} className="bg-primary px-6 py-2 rounded-full font-bold">Quay lại</button>

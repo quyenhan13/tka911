@@ -22,6 +22,15 @@
   color-scheme: dark;
 }
 
+/* Force all media containers to be black to avoid white flashes */
+iframe, video, .aspect-video {
+  background-color: #000 !important;
+}
+
+iframe {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   padding: 0;
