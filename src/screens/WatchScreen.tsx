@@ -65,32 +65,8 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
     }
     
     if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) {
-      // Trả về mã HTML trực tiếp để nhúng (srcDoc), tránh lỗi SAMEORIGIN từ server
-      return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center}
-            #player{width:100vw;height:100vh}
-          </style>
-        </head>
-        <body>
-          <div id="player"></div>
-          <script src="https://www.youtube.com/iframe_api"></script>
-          <script>
-            var player;
-            function onYouTubeIframeAPIReady() {
-              player = new YT.Player('player', {
-                height: '100%', width: '100%', videoId: '${id}',
-                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': 'https://vteen.shop' },
-                events: { 'onReady': function(e){ e.target.playVideo(); } }
-              });
-            }
-          </script>
-        </body>
-        </html>
-      `;
+      // Dùng link trực tiếp với tham số origin để YouTube nhận diện đúng trên iPhone
+      return `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1&origin=https://vteen.shop`;
     }
   }
 
@@ -284,32 +260,8 @@ const prepareServerOneHtml = (html: string) => {
     }
     
     if (id && id.length === 11) {
-      // Trả về mã HTML trực tiếp để nhúng (srcDoc), tránh lỗi SAMEORIGIN từ server
-      return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center}
-            #player{width:100vw;height:100vh}
-          </style>
-        </head>
-        <body>
-          <div id="player"></div>
-          <script src="https://www.youtube.com/iframe_api"></script>
-          <script>
-            var player;
-            function onYouTubeIframeAPIReady() {
-              player = new YT.Player('player', {
-                height: '100%', width: '100%', videoId: '${id}',
-                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': 'https://vteen.shop' },
-                events: { 'onReady': function(e){ e.target.playVideo(); } }
-              });
-            }
-          </script>
-        </body>
-        </html>
-      `;
+      // Dùng link trực tiếp với tham số origin để YouTube nhận diện đúng trên iPhone
+      return `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1&origin=https://vteen.shop`;
     }
   }
   
