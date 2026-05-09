@@ -425,13 +425,10 @@ const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: any) => 
             {/* Main Action Button */}
             <button
               onClick={() => {
-                const link = document.createElement('a');
-                link.href = file.webContentLink || file.webViewLink;
-                link.download = file.name;
-                link.target = '_blank';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                const savedUser = localStorage.getItem('vteen_user');
+                const apiToken = JSON.parse(savedUser || '{}')?.api_token;
+                const downloadUrl = `${CONFIG.API_BASE_URL}/download.php?id=${file.id}&account=${file.account_source}&name=${encodeURIComponent(file.name)}&api_token=${apiToken}`;
+                window.open(downloadUrl, '_blank');
               }}
               className="w-full bg-gradient-to-br from-primary to-cyan-500 text-black py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(6,182,212,0.4)] mb-8 hover:scale-[1.02] active:scale-95 transition-all"
             >
