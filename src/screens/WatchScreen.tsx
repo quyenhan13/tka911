@@ -65,12 +65,29 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
     }
     
     if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) {
-      const params = new URLSearchParams({
-        id: id,
-        autoplay: '1'
-      });
-      // Sử dụng proxy đơn giản hóa để tránh lỗi 153
-      return `${CONFIG.SITE_BASE_URL}/yt_player.php?${params.toString()}&t=${Date.now()}`;
+      // Trả về mã HTML trực tiếp để nhúng (srcDoc), tránh lỗi SAMEORIGIN từ server
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden}</style>
+        </head>
+        <body>
+          <div id="player"></div>
+          <script src="https://www.youtube.com/iframe_api"></script>
+          <script>
+            var player;
+            function onYouTubeIframeAPIReady() {
+              player = new YT.Player('player', {
+                height: '100%', width: '100%', videoId: '${id}',
+                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': 'https://vteen.shop' },
+                events: { 'onReady': function(e){ e.target.playVideo(); } }
+              });
+            }
+          </script>
+        </body>
+        </html>
+      `;
     }
   }
 
@@ -208,6 +225,21 @@ const toVteenPath = (value: string) => {
 
   return `/${value.replace(/^\/+/, '')}`;
 };
+const prepareEmbedHtml = (html: string) => {
+  if (!html || !html.trim()) return '<html><body style="background:#000;color:#666;display:flex;align-items:center;justify-content:center">Loading...</body></html>';
+  
+  const extraStyle = `
+    <style>
+      body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000 !important; overflow: hidden; }
+      iframe, video { width: 100% !important; height: 100% !important; border: none !important; background: #000 !important; }
+    </style>
+  `;
+
+  // Thêm base tag để các link tương đối trong HTML hoạt động
+  const baseTag = `<base href="${CONFIG.SITE_BASE_URL}/">`;
+  
+  return `<!DOCTYPE html><html><head>${baseTag}${extraStyle}</head><body>${html}</body></html>`;
+};
 
 
 const prepareServerOneHtml = (html: string) => {
@@ -228,19 +260,31 @@ const prepareServerOneHtml = (html: string) => {
     finalSrc = new URL(iframeSrc, CONFIG.SITE_BASE_URL).toString();
   }
 
-  // MỚI: Nếu là link YouTube, phải đẩy qua proxy yt_player.php
-  if (finalSrc.includes('youtube.com') || finalSrc.includes('youtu.be')) {
-    let id = '';
-    if (finalSrc.includes('v=')) {
-      id = new URL(finalSrc).searchParams.get('v') || '';
-    } else {
-      const parts = finalSrc.split('/');
-      id = parts[parts.length - 1].split('?')[0];
-    }
     if (id && id.length === 11) {
-      return `${CONFIG.SITE_BASE_URL}/yt_player.php?id=${id}&autoplay=1&t=${Date.now()}`;
+      // Trả về mã HTML trực tiếp để nhúng (srcDoc), tránh lỗi SAMEORIGIN từ server
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden}</style>
+        </head>
+        <body>
+          <div id="player"></div>
+          <script src="https://www.youtube.com/iframe_api"></script>
+          <script>
+            var player;
+            function onYouTubeIframeAPIReady() {
+              player = new YT.Player('player', {
+                height: '100%', width: '100%', videoId: '${id}',
+                playerVars: { 'autoplay': 1, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'origin': 'https://vteen.shop' },
+                events: { 'onReady': function(e){ e.target.playVideo(); } }
+              });
+            }
+          </script>
+        </body>
+        </html>
+      `;
     }
-  }
   
   return finalSrc;
 };
@@ -402,14 +446,13 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         }
 
         const embedPath = toVteenPath(servers[selectedKey]);
-        const embedUrl = embedPath.startsWith('http') ? embedPath : `${CONFIG.SITE_BASE_URL}${embedPath}`;
 
         if (cancelled) return;
         setWebServers(servers);
 
-        // Nếu là Server 1 (VIP), chúng ta cần kiểm tra xem nó có phải YouTube không
+        const embedHtml = await fetchVteenText(embedPath);
+        
         if (selectedKey === '1') {
-          const embedHtml = await fetchVteenText(embedPath);
           const vipSrc = prepareServerOneHtml(embedHtml);
           const videoSrc = extractVideoSource(embedHtml);
           
@@ -417,15 +460,12 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
             setWebPlayer({ html: null, src: vipSrc, videoSrc: null });
           } else if (videoSrc) {
             setWebPlayer({ html: null, src: null, videoSrc });
-          } else if (currentEmbedSrc) {
-            setWebPlayer({ html: null, src: null, videoSrc: null });
           } else {
-            // Nếu không phân tích được, dùng thẳng URL của server
-            setWebPlayer({ html: null, src: embedUrl, videoSrc: null });
+            setWebPlayer({ html: prepareEmbedHtml(embedHtml), src: null, videoSrc: null });
           }
         } else {
-          // Các server khác, dùng thẳng URL để tránh trắng màn
-          setWebPlayer({ html: null, src: embedUrl, videoSrc: null });
+          const videoSrc = extractVideoSource(embedHtml);
+          setWebPlayer({ html: videoSrc ? null : prepareEmbedHtml(embedHtml), src: null, videoSrc });
         }
 
         const selectedServer = Number(selectedKey);
@@ -537,7 +577,8 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
             ) : currentEmbedSrc && !playerLoading ? (
               <iframe 
                 key={`${currentEp.episode}-${activeServer}-api`}
-                src={currentEmbedSrc}
+                src={currentEmbedSrc.startsWith('<!DOCTYPE') ? undefined : currentEmbedSrc}
+                srcDoc={currentEmbedSrc.startsWith('<!DOCTYPE') ? currentEmbedSrc : undefined}
                 className="absolute inset-0 w-full h-full border-0"
                 style={{ backgroundColor: 'black !important', zIndex: 1 }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
