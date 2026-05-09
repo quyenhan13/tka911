@@ -4,54 +4,39 @@ const UniverseBackground: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const stream = containerRef.current;
+    if (!stream) return;
 
     const colors = ['#00f2ff', '#39ffba', '#ffffff', '#7000ff', '#ff00d4'];
-    const stream = containerRef.current;
     let emitterTimer: ReturnType<typeof window.setInterval> | null = null;
-    const isMobile = window.innerWidth < 768;
+
+    const getSpawnMetrics = () => ({
+      spawnY: window.innerHeight + 20,
+      travel: window.innerHeight + 120
+    });
 
     const spawnParticle = () => {
-      if (!stream) return;
+      const metrics = getSpawnMetrics();
       const particle = document.createElement('div');
       particle.className = 'stream-particle';
 
-      const size = Math.random() * 2 + 1;
+      const size = Math.random() * 3 + 2;
       particle.style.width = size + 'px';
       particle.style.height = size + 'px';
       particle.style.left = Math.random() * window.innerWidth + 'px';
-      
-      const spawnY = window.innerHeight + 20;
-      const travel = window.innerHeight + 120;
-      
-      particle.style.top = (spawnY + Math.random() * 18 - 9) + 'px';
+      particle.style.top = (metrics.spawnY + Math.random() * 18 - 9) + 'px';
       particle.style.color = colors[Math.floor(Math.random() * colors.length)];
-      
-      const duration = (Math.random() * 8 + 10).toFixed(2) + 's';
-      const drift = (Math.random() * 100 - 50).toFixed(2) + 'px';
-      const opacity = (Math.random() * 0.16 + 0.18).toFixed(2);
-      const travelDistance = (-travel - Math.random() * 100).toFixed(2) + 'px';
-
-      particle.style.setProperty('--duration', duration);
-      particle.style.setProperty('--drift', drift);
-      particle.style.setProperty('--opacity', opacity);
-      particle.style.setProperty('--travel', travelDistance);
+      particle.style.setProperty('--duration', (Math.random() * 6 + 8).toFixed(2) + 's');
+      particle.style.setProperty('--drift', (Math.random() * 80 - 40).toFixed(2) + 'px');
+      particle.style.setProperty('--opacity', (Math.random() * 0.18 + 0.3).toFixed(2));
+      particle.style.setProperty('--travel', (-metrics.travel - Math.random() * 80).toFixed(2) + 'px');
 
       stream.appendChild(particle);
 
-      const ttl = (parseFloat(duration) * 1000) + 500;
-      setTimeout(() => {
-        if (particle.parentNode) {
-          particle.parentNode.removeChild(particle);
-        }
+      const ttl = (parseFloat(particle.style.getPropertyValue('--duration')) || 10) * 1000 + 500;
+      window.setTimeout(() => {
+        particle.parentNode?.removeChild(particle);
       }, ttl);
-    };
-
-    const startEmitter = () => {
-      if (emitterTimer !== null) return;
-      emitterTimer = setInterval(() => {
-        if (!document.hidden) spawnParticle();
-      }, isMobile ? 650 : 320);
     };
 
     const stopEmitter = () => {
@@ -60,8 +45,16 @@ const UniverseBackground: React.FC = () => {
       emitterTimer = null;
     };
 
-    for (let i = 0; i < (isMobile ? 6 : 12); i++) {
-      setTimeout(spawnParticle, i * 220);
+    const startEmitter = () => {
+      if (emitterTimer !== null) return;
+      emitterTimer = window.setInterval(() => {
+        if (!document.hidden) spawnParticle();
+      }, window.innerWidth < 768 ? 180 : 110);
+    };
+
+    stream.innerHTML = '';
+    for (let i = 0; i < 14; i++) {
+      window.setTimeout(spawnParticle, i * 90);
     }
 
     startEmitter();
@@ -76,75 +69,62 @@ const UniverseBackground: React.FC = () => {
     return () => {
       stopEmitter();
       document.removeEventListener('visibilitychange', handleVisibility);
-      if (stream) stream.innerHTML = '';
+      stream.innerHTML = '';
     };
   }, []);
 
   return (
-    <div className="universe-stream-page fixed inset-0 z-[-1] overflow-hidden pointer-events-none bg-[#05070a]">
-      {/* Enhanced Multi-Layer Nebula */}
-      <div className="nebula-layer n-1" />
-      <div className="nebula-layer n-2" />
-      <div className="nebula-layer n-3" />
-      
-      {/* Background Stars */}
-      <div className="static-stars" />
+    <div className="universe-stream-page fixed inset-0 z-0 overflow-hidden pointer-events-none">
+      <div className="universe-nebula" />
+      <div className="universe-orb universe-orb-right" />
+      <div className="universe-orb universe-orb-left" />
       <div id="universe-stream" ref={containerRef} />
 
       <style>{`
         .universe-stream-page {
-          background: #05070a;
+          background:
+            radial-gradient(circle at 18% 20%, rgba(0, 242, 255, 0.08), transparent 28%),
+            radial-gradient(circle at 82% 12%, rgba(112, 0, 255, 0.10), transparent 32%),
+            radial-gradient(circle at 75% 78%, rgba(255, 0, 200, 0.06), transparent 26%),
+            #05070a;
+          color: #ffffff;
         }
 
-        .nebula-layer {
-          position: fixed;
-          inset: -50%;
-          filter: blur(90px);
-          opacity: 0.35;
-          mix-blend-mode: screen;
-          pointer-events: none;
-          z-index: -2;
-        }
-
-        .n-1 {
-          background: radial-gradient(circle at 20% 30%, rgba(0, 242, 255, 0.12), transparent 40%);
-          animation: nebulaDrift 60s ease-in-out infinite alternate;
-        }
-
-        .n-2 {
-          background: radial-gradient(circle at 80% 70%, rgba(112, 0, 255, 0.15), transparent 45%);
-          animation: nebulaDrift 55s ease-in-out infinite alternate-reverse;
-        }
-
-        .n-3 {
-          background: radial-gradient(circle at 50% 50%, rgba(255, 0, 200, 0.08), transparent 35%);
-          animation: nebulaDrift 70s ease-in-out infinite alternate;
-        }
-
-        @keyframes nebulaDrift {
-          from { transform: translate(-5%, -5%) scale(1); }
-          to { transform: translate(5%, 5%) scale(1.1); }
-        }
-
-        .static-stars {
+        .universe-nebula {
           position: fixed;
           inset: 0;
-          background-image: 
-            radial-gradient(1px 1px at 10% 10%, #fff, transparent),
-            radial-gradient(1px 1px at 20% 35%, #fff, transparent),
-            radial-gradient(1px 1px at 45% 85%, #fff, transparent),
-            radial-gradient(1.5px 1.5px at 75% 25%, #00f2ff, transparent),
-            radial-gradient(1px 1px at 85% 65%, #fff, transparent),
-            radial-gradient(1px 1px at 35% 15%, #fff, transparent),
-            radial-gradient(1.5px 1.5px at 65% 55%, #7000ff, transparent);
-          background-size: 50% 50%;
-          opacity: 0.3;
-          animation: twinkle 8s ease-in-out infinite alternate;
+          pointer-events: none;
+          z-index: 0;
+          background:
+            radial-gradient(circle at 20% 30%, rgba(0, 242, 255, 0.10), transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(112, 0, 255, 0.12), transparent 40%);
+          animation: universeNebulaPulse 15s ease-in-out infinite alternate;
         }
 
-        @keyframes twinkle {
-          from { opacity: 0.2; }
-          to { opacity: 0.5; }
+        .universe-orb {
+          position: fixed;
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: 0;
+          filter: blur(90px);
+        }
+
+        .universe-orb-right {
+          width: 520px;
+          height: 520px;
+          top: 72px;
+          right: -140px;
+          background: radial-gradient(circle, rgba(123, 140, 255, 0.18), rgba(90, 109, 216, 0.08) 42%, transparent 72%);
+          opacity: 0.7;
+        }
+
+        .universe-orb-left {
+          width: 460px;
+          height: 460px;
+          left: -180px;
+          top: 40px;
+          background: radial-gradient(circle, rgba(0, 242, 255, 0.16), rgba(223, 249, 255, 0.05) 42%, transparent 72%);
+          opacity: 0.6;
         }
 
         #universe-stream {
@@ -158,28 +138,41 @@ const UniverseBackground: React.FC = () => {
         .stream-particle {
           position: absolute;
           border-radius: 999px;
-          background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.95), currentColor 60%, rgba(255, 255, 255, 0) 100%);
+          background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.92), currentColor 58%, rgba(255, 255, 255, 0) 100%);
           box-shadow:
-            0 0 6px currentColor;
+            0 0 6px currentColor,
+            0 0 14px currentColor;
+          filter: blur(0.2px);
           opacity: 0;
           will-change: transform, opacity;
-          animation: universeStreamRise var(--duration, 15s) linear forwards;
+          animation: universeStreamRise var(--duration, 14s) linear forwards;
         }
 
         @keyframes universeStreamRise {
           0% {
-            transform: translate3d(0, 0, 0) scale(0.6);
+            transform: translate3d(0, 0, 0) scale(0.7);
             opacity: 0;
           }
-          15% {
-            opacity: var(--opacity, 0.5);
+          10% {
+            opacity: var(--opacity, 0.52);
           }
-          85% {
-            opacity: var(--opacity, 0.5);
+          70% {
+            opacity: var(--opacity, 0.52);
           }
           100% {
-            transform: translate3d(var(--drift, 0px), var(--travel, -800px), 0) scale(1.1);
+            transform: translate3d(var(--drift, 0px), var(--travel, -700px), 0) scale(1.08);
             opacity: 0;
+          }
+        }
+
+        @keyframes universeNebulaPulse {
+          from {
+            opacity: 0.45;
+            transform: scale(1);
+          }
+          to {
+            opacity: 0.8;
+            transform: scale(1.04);
           }
         }
       `}</style>

@@ -8,6 +8,7 @@ import ProfileScreen from './screens/ProfileScreen'
 import DriverScreen from './screens/DriverScreen'
 import UniverseBackground from './components/UniverseBackground'
 import ErrorBoundary from './components/ErrorBoundary'
+import Logo from './components/Logo'
 import './index.css'
 
 interface User {
@@ -45,7 +46,7 @@ function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 1500);
+    }, 2400);
     return () => clearTimeout(timer);
   }, []);
 
@@ -74,26 +75,79 @@ function App() {
           <motion.div
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-[#05070a]"
+            transition={{ duration: 0.65 }}
+            className="fixed inset-0 z-[2000] flex flex-col items-center justify-center overflow-hidden bg-[#05070a]"
           >
+            <UniverseBackground />
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.4 }}
-              className="text-center"
+              initial={{ opacity: 0, scale: 0.82 }}
+              animate={{ opacity: 0.95, scale: 1 }}
+              transition={{ duration: 1.1, ease: 'easeOut' }}
+              className="absolute h-72 w-72 rounded-full border border-primary/18 shadow-[0_0_80px_rgba(6,182,212,0.22),inset_0_0_70px_rgba(124,58,237,0.16)]"
+            />
+            <motion.div
+              initial={{ opacity: 0, rotate: 0, scale: 0.92 }}
+              animate={{ opacity: 1, rotate: 360, scale: 1 }}
+              transition={{ opacity: { duration: 0.7 }, rotate: { duration: 9, ease: 'linear', repeat: Infinity }, scale: { duration: 0.9 } }}
+              className="absolute h-56 w-56 rounded-full border border-dashed border-white/12"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="absolute h-36 w-36 rounded-full bg-primary/18 blur-3xl"
+            />
+            <motion.div
+              initial={{ scale: 0.78, opacity: 0, y: 18 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ duration: 0.75, ease: 'easeOut' }}
+              className="relative z-10 text-center"
             >
-              <h1 className="text-4xl font-black tracking-tighter mb-2">VTEEN</h1>
-              <p className="text-primary text-xs font-bold uppercase tracking-[0.4em] opacity-80">By Chin</p>
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.88 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ delay: 0.18, duration: 0.68, ease: 'easeOut' }}
+                className="mb-4 drop-shadow-[0_0_34px_rgba(6,182,212,0.34)]"
+              >
+                <Logo size="xl" layout="vertical" />
+              </motion.div>
+              <motion.div
+                initial={{ scaleX: 0, opacity: 0 }}
+                animate={{ scaleX: 1, opacity: 1 }}
+                transition={{ delay: 0.55, duration: 0.55 }}
+                className="mx-auto mb-4 h-px w-36 origin-center bg-linear-to-r from-transparent via-primary to-transparent"
+              />
+              <motion.p
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.72, duration: 0.5 }}
+                className="text-xs font-black uppercase tracking-[0.55em] text-primary/90"
+              >
+                By Chin
+              </motion.p>
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 112, opacity: 1 }}
+                transition={{ delay: 1.05, duration: 0.7, ease: 'easeOut' }}
+                className="mx-auto mt-8 h-1 overflow-hidden rounded-full bg-white/10"
+              >
+                <motion.div
+                  initial={{ x: '-100%' }}
+                  animate={{ x: '100%' }}
+                  transition={{ duration: 1.1, ease: 'easeInOut', repeat: Infinity }}
+                  className="h-full w-1/2 rounded-full bg-primary shadow-[0_0_18px_rgba(6,182,212,0.85)]"
+                />
+              </motion.div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {!user ? (
-        <LoginScreen onLoginSuccess={handleLoginSuccess} />
-      ) : (
-        <>
+      <div className="relative z-10 h-full">
+        {!user ? (
+          <LoginScreen onLoginSuccess={handleLoginSuccess} />
+        ) : (
+          <>
           <AnimatePresence mode="wait">
             {!watchingSlug && (
               <motion.main
@@ -134,8 +188,9 @@ function App() {
           </AnimatePresence>
 
           {!watchingSlug && <BottomTabs activeTab={activeTab} onTabChange={setActiveTab} />}
-        </>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

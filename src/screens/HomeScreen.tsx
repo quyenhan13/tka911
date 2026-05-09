@@ -48,6 +48,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
 
   const fetchMovies = useCallback(async (pageNum: number) => {
     setLoading(true);
@@ -88,7 +89,22 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
     return movies.filter((movie) => movie.display_name.toLowerCase().includes(keyword));
   }, [movies, searchTerm]);
 
-  const featuredMovie = searchTerm.trim() ? null : movies[0] ?? null;
+  useEffect(() => {
+    setFeaturedIndex(0);
+  }, [page, movies]);
+
+  useEffect(() => {
+    if (searchTerm.trim() || movies.length <= 1) return;
+
+    const timer = window.setInterval(() => {
+      setFeaturedIndex((current) => (current + 1) % Math.min(movies.length, 8));
+    }, 4500);
+
+    return () => window.clearInterval(timer);
+  }, [movies.length, searchTerm]);
+
+  const featuredMovies = searchTerm.trim() ? [] : movies.slice(0, Math.min(movies.length, 8));
+  const featuredMovie = featuredMovies[featuredIndex] ?? null;
   const paginationPages = useMemo(
     () => Array.from({ length: totalPages }, (_, index) => index + 1)
       .filter((item) => item === 1 || item === totalPages || (item >= page - 1 && item <= page + 1)),
@@ -104,7 +120,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   return (
     <div className="flex flex-col gap-5 pb-10">
       <header
-        className="sticky top-0 z-50 px-5 pb-3 border-b border-white/5 bg-background/70 backdrop-blur-2xl"
+        className="sticky top-0 z-50 border-b border-white/10 bg-[#05070a]/58 px-5 pb-3 shadow-[0_14px_40px_rgba(0,0,0,0.18)] backdrop-blur-2xl"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.25rem)' }}
       >
         <div className="flex items-center justify-between gap-4">
@@ -116,7 +132,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
               type="button"
               onClick={() => fetchMovies(page)}
               disabled={loading}
-              className="tap-target grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-white/50 transition active:scale-95 disabled:opacity-40"
+              className="tap-target grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.055] text-white/58 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition active:scale-95 disabled:opacity-40"
               aria-label="Lam moi"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`}>
@@ -136,7 +152,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
             placeholder="Tim ten phim..."
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            className="h-13 w-full rounded-2xl border border-white/10 bg-white/[0.05] pl-12 pr-12 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-primary/60 focus:bg-white/[0.08]"
+            className="h-13 w-full rounded-[1.15rem] border border-white/10 bg-black/24 pl-12 pr-12 text-sm font-bold text-white outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl transition placeholder:text-white/30 focus:border-primary/60 focus:bg-white/[0.08]"
           />
           {searchTerm && (
             <button
@@ -165,18 +181,21 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
       {featuredMovie && (
         <section className="px-5">
           <motion.button
+            key={featuredMovie.slug}
             type="button"
             onClick={() => onWatch(featuredMovie.slug)}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group relative h-[15.5rem] w-full overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#0b0f17] text-left shadow-2xl active:scale-[0.99]"
+            transition={{ duration: 0.35 }}
+            className="group relative h-[15.5rem] w-full overflow-hidden rounded-[1.45rem] border border-white/12 bg-[#0b0f17] text-left shadow-[0_24px_70px_rgba(0,0,0,0.42)] active:scale-[0.99]"
           >
             <img src={featuredMovie.poster_url || fallbackPoster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-35 blur-[2px] scale-105" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#05070a] via-[#05070a]/85 to-[#05070a]/35" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#05070a] via-[#05070a]/82 to-[#05070a]/28" />
+            <div className="absolute inset-0 bg-radial-[at_78%_18%] from-primary/12 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent" />
 
             <div className="relative z-10 flex h-full items-end gap-4 p-4">
-              <div className="w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/40 shadow-2xl">
+              <div className="w-24 shrink-0 overflow-hidden rounded-[1rem] border border-white/12 bg-black/40 shadow-2xl">
                 <img
                   src={featuredMovie.poster_url || fallbackPoster}
                   alt=""
@@ -188,8 +207,8 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
               </div>
               <div className="min-w-0 flex-1 pb-1">
                 <div className="mb-3 flex flex-wrap gap-2">
-                  <span className="rounded-md bg-vip px-2 py-1 text-[9px] font-black uppercase tracking-widest text-black">Noi bat</span>
-                  <span className="rounded-md border border-white/10 bg-white/10 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-white/80">
+                  <span className="rounded-lg bg-vip px-2 py-1 text-[9px] font-black uppercase tracking-widest text-black">Noi bat</span>
+                  <span className="rounded-lg border border-white/10 bg-white/10 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-white/80 backdrop-blur-md">
                     {featuredMovie.is_series ? `${featuredMovie.total_eps || '?'} tap` : 'Phim le'}
                   </span>
                 </div>
@@ -197,7 +216,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
                 <p className="mt-2 text-xs font-bold uppercase tracking-[0.22em] text-primary/90">
                   Tap moi {featuredMovie.latest_ep || 'Full'}
                 </p>
-                <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-black">
+                <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-[10px] font-black uppercase tracking-widest text-black shadow-lg shadow-primary/20">
                   <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
                     <path d="M8 5v14l11-7z" />
                   </svg>
@@ -206,6 +225,19 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
               </div>
             </div>
           </motion.button>
+          {featuredMovies.length > 1 && (
+            <div className="mt-3 flex items-center justify-center gap-1.5">
+              {featuredMovies.map((movie, index) => (
+                <button
+                  key={movie.slug}
+                  type="button"
+                  onClick={() => setFeaturedIndex(index)}
+                  className={`h-1.5 rounded-full transition-all ${index === featuredIndex ? 'w-6 bg-primary shadow-[0_0_12px_rgba(6,182,212,0.55)]' : 'w-1.5 bg-white/22'}`}
+                  aria-label={`Phim noi bat ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
 

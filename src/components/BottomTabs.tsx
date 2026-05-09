@@ -46,10 +46,10 @@ const tabs: Tab[] = [
 const BottomTabs: React.FC<BottomTabsProps> = ({ activeTab, onTabChange }) => {
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50 px-4 pt-5 bg-linear-to-t from-[#05070a] via-[#05070a]/90 to-transparent pointer-events-none"
+      className="fixed bottom-0 left-0 right-0 z-50 px-4 pt-6 bg-linear-to-t from-[#05070a] via-[#05070a]/86 to-transparent pointer-events-none"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.55rem)' }}
     >
-      <nav className="pointer-events-auto mx-auto flex h-16 max-w-md items-center justify-around rounded-[1.35rem] border border-white/10 bg-[#090d14]/82 px-2 shadow-[0_-18px_55px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+      <nav className="pointer-events-auto mx-auto flex h-[4.35rem] max-w-md items-center justify-around rounded-[1.55rem] border border-white/12 bg-[#070b12]/78 px-2.5 shadow-[0_-18px_60px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl">
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -57,15 +57,15 @@ const BottomTabs: React.FC<BottomTabsProps> = ({ activeTab, onTabChange }) => {
               key={tab.id}
               type="button"
               onClick={() => onTabChange(tab.id)}
-              className={`relative flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-xs font-black uppercase tracking-[0.16em] transition ${
-                active ? 'text-black' : 'text-white/38 active:text-white'
+              className={`relative flex h-[3.15rem] flex-1 items-center justify-center gap-2 rounded-[1.15rem] text-xs font-black uppercase tracking-[0.16em] transition ${
+                active ? 'text-black' : 'text-white/42 active:text-white'
               }`}
               aria-current={active ? 'page' : undefined}
             >
               {active && (
                 <motion.span
                   layoutId="bottom-tab-active"
-                  className="absolute inset-0 rounded-2xl bg-primary shadow-[0_10px_28px_rgba(6,182,212,0.28)]"
+                  className="absolute inset-0 rounded-[1.15rem] bg-linear-to-br from-primary to-cyan-300 shadow-[0_12px_30px_rgba(6,182,212,0.34)]"
                   transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                 />
               )}
