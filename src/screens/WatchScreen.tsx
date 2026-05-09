@@ -20,6 +20,12 @@ interface MovieDetails {
   episodes: Episode[];
 }
 
+interface MovieDetailsResponse {
+  status: string;
+  data?: MovieDetails;
+  message?: string;
+}
+
 interface WatchScreenProps {
   slug: string;
   onBack: () => void;
@@ -45,7 +51,9 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
       } else if (value.includes('youtu.be/')) {
         id = value.split('youtu.be/')[1].split('?')[0];
       }
-    } catch {}
+    } catch {
+      id = value;
+    }
     
     if (id && id.length <= 15) {
       return `${CONFIG.SITE_BASE_URL}/yt_player.php?id=${id}`;
@@ -72,7 +80,9 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
       if (url.origin === CONFIG.SITE_BASE_URL) {
         return `/__vteen${url.pathname}${url.search}${url.hash}`;
       }
-    } catch {}
+    } catch {
+      return src;
+    }
   }
 
   return src;
@@ -117,11 +127,6 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     }
   };
 
-  useEffect(() => {
-    setFav(isFavorite(slug));
-    fetchDetails();
-  }, [slug]);
-
   const handleToggleFav = () => {
     if (details) {
       const added = toggleFavorite({
@@ -146,13 +151,13 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         credentials: 'include',
       });
       const text = await response.text();
-      let result: any;
+      let result: MovieDetailsResponse;
       try {
         result = JSON.parse(text);
       } catch {
         throw new Error(`API tra ve khong phai JSON (${response.status}): ${text.slice(0, 120)}`);
       }
-      if (result.status === 'success') {
+      if (result.status === 'success' && result.data) {
         setDetails(result.data);
         if (result.data.episodes.length > 0) {
           const saved = getHistory().find(item => item.slug === slug);
@@ -175,6 +180,14 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setFav(isFavorite(slug));
+      fetchDetails();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [slug]);
 
   const currentEmbedUrl = activeServer === 1 ? currentEp?.embed_url : currentEp?.embed_url_2;
   const currentHost = activeServer === 1 ? currentEp?.embed_host : currentEp?.embed_host_2;
