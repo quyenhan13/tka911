@@ -68,4 +68,4 @@ const BottomTabs: React.FC<BottomTabsProps> = ({ activeTab, onTabChange }) => {
   );
 };
 
-export default BottomTabs;
+export default React.memo(BottomTabs);

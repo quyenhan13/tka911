@@ -26,7 +26,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
         <img 
           src={poster} 
           alt={title} 
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className="h-full w-full object-cover transition-transform duration-300 md:group-hover:scale-105"
           loading="lazy"
           onError={(e) => {
             (e.target as HTMLImageElement).src = 'https://placehold.co/300x450/111/444?text=VTeen';
@@ -48,7 +48,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
         </div>
 
         {/* Overlay Play Button */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-0 hidden items-center justify-center bg-black/40 opacity-0 transition-opacity duration-200 md:flex md:group-hover:opacity-100">
           <div className="w-12 h-12 flex items-center justify-center rounded-full bg-primary text-white shadow-xl">
             <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 ml-1">
               <path d="M8 5v14l11-7z" />
@@ -69,4 +69,4 @@ const MovieCard: React.FC<MovieCardProps> = ({
   );
 };
 
-export default MovieCard;
+export default React.memo(MovieCard);

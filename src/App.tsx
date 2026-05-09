@@ -49,9 +49,14 @@ function App() {
   
   const iframeSrc = useMemo(() => {
     const id = currentVideo?.id ?? bootVideoId;
-    // Quan trọng: Chỉ đổi URL lần đầu tiên. Các lần sau sẽ dùng postMessage để đổi bài.
-    // Điều này giúp giữ cho iframe không bị load lại, tránh bị iOS tắt tiếng.
-    return `https://vteen.shop/yt_player.php?id=${id}`;
+    const url = `https://vteen.shop/yt_player.php?id=${id}`;
+    
+    if (import.meta.env.DEV) {
+      // Dùng proxy của Vite để tránh lỗi X-Frame-Options trên localhost
+      return `/__vteen/yt_player.php?id=${id}`;
+    }
+    
+    return url;
   }, []); // Bỏ dependency currentVideo để src cố định
 
   // Send postMessage to YouTube iframe
@@ -156,14 +161,20 @@ function App() {
       playRetryTimersRef.current.forEach((t) => window.clearTimeout(t));
       playRetryTimersRef.current = [];
       const perform = () => {
-        sendCommand('unMute');
-        sendCommand('setVolume', [100]);
         sendCommand('loadVideoById', [video.id]);
         sendCommand('playVideo');
+        sendCommand('unMute');
+        sendCommand('setVolume', [100]);
+        sendCommand('getDuration');
+        sendCommand('getCurrentTime');
       };
 
       // Chỉ gọi 1 lần duy nhất để tránh bị ngắt nhạc (vấp)
       perform();
+      [180, 500, 1000, 1800].forEach((delay) => {
+        const timer = window.setTimeout(perform, delay);
+        playRetryTimersRef.current.push(timer);
+      });
     },
     [sendCommand]
   );
@@ -188,8 +199,9 @@ function App() {
       setDuration(0);
       setIsPlaying(true);
       if (activeTab === 'tube') setTubeExpanded(true);
+      ytSendPlay(video);
       if (ytListeningRef.current) {
-        ytSendPlay(video);
+        pendingPlayRef.current = null;
         return;
       }
       // Nếu chưa listening (lần đầu), nó sẽ tự chạy qua onLoad của iframe
@@ -533,14 +545,14 @@ function App() {
           </AnimatePresence>
 
           {/* Hidden YouTube iframe (Luôn tồn tại để giữ nhạc chạy xuyên suốt) */}
-          {currentVideo && (
-            <div className="fixed bottom-[-200px] right-0 pointer-events-none z-[-1]">
+          {user && (
+            <div className="fixed bottom-[-240px] right-0 pointer-events-none z-[1] opacity-0">
               <iframe
                 ref={iframeRef}
                 src={iframeSrc}
                 allow="autoplay; encrypted-media; fullscreen"
                 title="yt-player"
-                className="w-[200px] h-[200px] opacity-[0.01]"
+                className="w-[200px] h-[200px]"
                 onLoad={() => {
                   const gen = ++iframeLoadGenRef.current;
                   window.setTimeout(() => {

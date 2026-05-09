@@ -26,6 +26,61 @@ interface WatchScreenProps {
   onUnauthorized?: () => void;
 }
 
+const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
+  const value = embedUrl?.trim();
+  if (!value) return null;
+
+  // 1. Xử lý link YouTube để dùng qua proxy yt_player.php (giống music)
+  // Điều này giúp bypass lỗi embedding trên iOS/Capacitor
+  
+  // Kiểm tra xem có thực sự là YouTube không
+  const hasYTKeyword = value.includes('youtube.com') || value.includes('youtu.be');
+  const isYTId = value.length === 11 && !value.includes('.') && !value.includes('/');
+  const isYouTube = (host?.toLowerCase().includes('youtube') && (hasYTKeyword || isYTId)) || hasYTKeyword;
+
+  if (isYouTube) {
+    let id = value;
+    try {
+      if (value.includes('v=')) {
+        id = new URL(value).searchParams.get('v') || value;
+      } else if (value.includes('embed/')) {
+        id = value.split('embed/')[1].split('?')[0];
+      } else if (value.includes('youtu.be/')) {
+        id = value.split('youtu.be/')[1].split('?')[0];
+      }
+    } catch {}
+    
+    if (id && id.length <= 15) { // ID YouTube thường chỉ 11 ký tự
+      return `${CONFIG.SITE_BASE_URL}/yt_player.php?id=${id}`;
+    }
+  }
+
+  // 2. Xử lý các link khác, đảm bảo HTTPS và đúng root domain
+  let src = value;
+  if (value.startsWith('//')) {
+    src = `https:${value}`;
+  } else if (!value.startsWith('http')) {
+    // Nếu là link tương đối (vd: embed.php...), nối với SITE_BASE_URL
+    src = new URL(value, `${CONFIG.SITE_BASE_URL}/`).toString();
+  }
+
+  // Đảm bảo luôn dùng https cho vteen.shop
+  if (src.includes('vteen.shop')) {
+    src = src.replace('http://', 'https://');
+  }
+
+  if (import.meta.env.DEV) {
+    try {
+      const url = new URL(src);
+      if (url.origin === CONFIG.SITE_BASE_URL) {
+        return `/__vteen${url.pathname}${url.search}${url.hash}`;
+      }
+    } catch {}
+  }
+
+  return src;
+};
+
 const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized }) => {
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [currentEp, setCurrentEp] = useState<Episode | null>(null);
@@ -52,14 +107,9 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     };
   }, []);
 
-  const shouldPreferServer2 = (ep: Episode) => {
-    const host = (ep.embed_host || '').toLowerCase();
-    return Boolean(ep.embed_url_2 && (host === 'clbphimxua.com' || host.endsWith('.clbphimxua.com') || host === 'short.icu'));
-  };
-
   const selectEpisode = (ep: Episode, movieDetails = details) => {
     setCurrentEp(ep);
-    setActiveServer(shouldPreferServer2(ep) ? 2 : 1);
+    setActiveServer(1);
     if (movieDetails) {
       saveToHistory({
         slug,
@@ -130,6 +180,8 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   };
 
   const currentEmbedUrl = activeServer === 1 ? currentEp?.embed_url : currentEp?.embed_url_2;
+  const currentHost = activeServer === 1 ? currentEp?.embed_host : currentEp?.embed_host_2;
+  const currentEmbedSrc = buildEmbedSrc(currentEmbedUrl, currentHost);
 
   if (loading) {
     return (
@@ -174,14 +226,15 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
       {/* Video Player Area */}
       <div className="relative z-50 w-full shrink-0 aspect-video max-h-[42vh] bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
-        {currentEp && currentEmbedUrl ? (
+        {currentEp && currentEmbedSrc ? (
           <>
             <iframe 
               key={`${currentEp.episode}-${activeServer}`}
-              src={`${CONFIG.SITE_BASE_URL}/${currentEmbedUrl}`}
+              src={currentEmbedSrc}
               className="absolute inset-0 w-full h-full border-0 bg-black"
               allowFullScreen
-              allow="autoplay; encrypted-media"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              referrerPolicy="strict-origin-when-cross-origin"
               title="Player"
             />
           </>
@@ -235,9 +288,9 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         <div>
           <h3 className="text-xs font-bold text-text-dim uppercase tracking-widest mb-3">Chọn tập phim</h3>
           <div className="grid grid-cols-5 gap-2">
-            {details.episodes.map((ep) => (
+            {details.episodes.map((ep, index) => (
               <button
-                key={ep.episode}
+                key={`${ep.episode}-${index}`}
                 onClick={() => selectEpisode(ep)}
                 className={`h-10 rounded-lg font-bold text-sm transition-all active:scale-90 ${
                   currentEp?.episode === ep.episode 
@@ -264,3 +317,5 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 };
 
 export default WatchScreen;
+
+
