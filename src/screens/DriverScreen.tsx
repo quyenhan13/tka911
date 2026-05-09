@@ -210,7 +210,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       const savedUser = localStorage.getItem('vteen_user');
       const apiToken = JSON.parse(savedUser || '{}')?.api_token;
       await fetch(`${CONFIG.API_BASE_URL}/driver_list.php?delete_file=${fileId}&from_account=${account}&api_token=${apiToken}`);
-      fetchFiles();
+      fetchFiles(forceRefresh);
     } catch (err) {
       console.error('Delete error:', err);
     } finally {
@@ -218,13 +218,13 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
     }
   };
 
-  const fetchFiles = useCallback(async () => {
+  const fetchFiles = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setSyncError(null);
     try {
       const query = submittedQuery.trim();
       const cache = readDriveCache(activeAccount, query);
-      if (cache) {
+      if (cache && !forceRefresh) {
         setFiles(cache.files);
         setAccounts(unique(['all', ...cache.accounts]));
         if (cache.quota) setQuota(cache.quota);
@@ -236,45 +236,55 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
         ? fetch(`${CONFIG.API_BASE_URL}/driver_list.php?account=${activeAccount}&q=${encodeURIComponent(query)}&api_token=${apiToken}`)
             .then((response) => response.json() as Promise<DriverApiResponse>)
         : Promise.resolve(null);
-      const webRequest = fetchWebDriveHtml(activeAccount, query).then(parseWebDrive);
-      const [apiResult, webResult] = await Promise.allSettled([apiRequest, webRequest]);
-
+      const webRequest = fetchWebDriveHtml(activeAccount, query, forceRefresh).then(parseWebDrive);
       const failures: string[] = [];
-      const apiResponse = apiResult.status === 'fulfilled' ? apiResult.value : null;
-      const webState = webResult.status === 'fulfilled' ? webResult.value : { files: [], accounts: ['all'] };
       let apiFiles: DriveFile[] = [];
       let apiAccounts: string[] = [];
+      let webState: WebDriveState = { files: [], accounts: ['all'] };
       let nextQuota = cache?.quota || null;
 
-      if (apiResult.status === 'rejected') failures.push('API Drive khong phan hoi');
-      if (webResult.status === 'rejected') failures.push('Web Drive khong phan hoi');
-      if (apiResponse?.status === 'success') {
-        apiFiles = (apiResponse.data || []).map((file) => ({ ...file, source: 'api' as const }));
-        apiAccounts = apiResponse.accounts || [];
-        nextQuota = apiResponse.quota || nextQuota;
-      } else if (apiToken && apiResponse) {
-        failures.push(apiResponse.message || 'API Drive khong dong bo');
-      }
+      const applyDriveState = () => {
+        const nextAccounts = unique(['all', ...webState.accounts, ...apiAccounts]);
+        const nextFiles = mergeFiles(apiFiles, webState.files);
+        if (nextFiles.length === 0) return;
+        setFiles(nextFiles);
+        setAccounts(nextAccounts);
+        if (nextQuota) setQuota(nextQuota);
+        writeDriveCache(activeAccount, query, {
+          files: nextFiles,
+          accounts: nextAccounts,
+          quota: nextQuota,
+          savedAt: Date.now()
+        });
+      };
 
-      const nextAccounts = unique(['all', ...webState.accounts, ...apiAccounts]);
-      const nextFiles = mergeFiles(apiFiles, webState.files);
-      if (nextFiles.length === 0 && cache?.files.length && failures.length) {
-        if (Date.now() - cache.savedAt >= DRIVE_CACHE_MAX_AGE) {
-          setSyncError(failures.join(' / '));
+      const apiSync = apiRequest
+        .then((apiResponse) => {
+          if (apiResponse?.status === 'success') {
+            apiFiles = (apiResponse.data || []).map((file) => ({ ...file, source: 'api' as const }));
+            apiAccounts = apiResponse.accounts || [];
+            nextQuota = apiResponse.quota || nextQuota;
+          } else if (apiToken && apiResponse) {
+            failures.push(apiResponse.message || 'API Drive khong dong bo');
+          }
+        })
+        .catch(() => failures.push('API Drive khong phan hoi'))
+        .finally(applyDriveState);
+
+      const webSync = webRequest
+        .then((state) => {
+          webState = state;
+        })
+        .catch(() => failures.push('Web Drive khong phan hoi'))
+        .finally(applyDriveState);
+
+      await Promise.allSettled([apiSync, webSync]);
+
+      if (apiFiles.length === 0 && webState.files.length === 0) {
+        if (cache?.files.length && !forceRefresh && Date.now() - cache.savedAt < DRIVE_CACHE_MAX_AGE) {
+          return;
         }
-        return;
-      }
-      setFiles(nextFiles);
-      setAccounts(nextAccounts);
-      if (nextQuota) setQuota(nextQuota);
-      writeDriveCache(activeAccount, query, {
-        files: nextFiles,
-        accounts: nextAccounts,
-        quota: nextQuota,
-        savedAt: Date.now()
-      });
-      if (failures.length && apiFiles.length === 0 && webState.files.length === 0) {
-        setSyncError(cache && Date.now() - cache.savedAt < DRIVE_CACHE_MAX_AGE ? null : failures.join(' / '));
+        setSyncError(failures.join(' / ') || 'Khong co du lieu Drive');
       }
     } catch {
       setSyncError('Khong the dong bo Drive');
@@ -342,7 +352,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
     return `https://drive.google.com/thumbnail?id=${file.id}&sz=w400`;
   };
 
-  const submitSearch = (event?: React.FormEvent) => {
+  const submitSearch = (event?: React.FormEvent, forceRefresh = false) => {
     event?.preventDefault();
     const nextQuery = searchQuery.trim();
     if (nextQuery === submittedQuery) {
