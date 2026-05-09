@@ -68,7 +68,7 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
       const params = new URLSearchParams({
         id: id,
         autoplay: '1',
-        origin: window.location.origin
+        origin: CONFIG.SITE_BASE_URL
       });
       // Sử dụng proxy yt_player.php trên server để tránh lỗi 150/153 trên app
       return `${CONFIG.SITE_BASE_URL}/yt_player.php?${params.toString()}`;
