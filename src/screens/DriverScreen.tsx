@@ -164,7 +164,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
             <div className="flex flex-col flex-1 mr-4">
               <div className="flex justify-between items-center mb-1.5">
                 <span className="text-[8px] font-black text-white/30 uppercase tracking-tighter">BỘ NHỚ TRỰC TUYẾN</span>
-                <span className="text-[9px] font-black text-primary/80">{quota.percent}% • {quota.usage}</span>
+                <span className="text-[9px] font-black text-primary/80">{quota.usage} / {quota.limit} ({quota.percent}%)</span>
               </div>
               <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
                 <motion.div
