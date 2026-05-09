@@ -50,27 +50,21 @@ function App() {
   
   const iframeSrc = useMemo(() => {
     const id = currentVideo?.id ?? bootVideoId;
-    const url = `https://vteen.shop/yt_player.php?id=${id}&origin=${encodeURIComponent(window.location.origin)}`;
-    
-    if (import.meta.env.DEV) {
-      return `/__vteen/yt_player.php?id=${id}&origin=${encodeURIComponent(window.location.origin)}`;
-    }
-    
-    return url;
-  }, [currentVideo?.id]); // Thêm dependency để iframe có thể load lại nếu cần (tin cậy hơn trên iOS)
+    // Dùng trình phát chính thức của vteen.shop
+    return `https://vteen.shop/yt_player.php?id=${id}&origin=${encodeURIComponent(window.location.origin)}`;
+  }, [currentVideo?.id]);
 
   // Send postMessage to YouTube iframe
   const sendCommand = useCallback((func: string, args?: any[]) => {
     if (!iframeRef.current?.contentWindow) return;
     try {
-      // Gửi lệnh theo định dạng đơn giản cho Proxy nhận
-      iframeRef.current.contentWindow.postMessage({ func, args: args || [] }, '*');
+      // Gửi cho cả 2 định dạng để chắc chắn YouTube nhận được
+      const msg = { event: 'command', func, args: args || [] };
+      iframeRef.current.contentWindow.postMessage(msg, '*');
+      iframeRef.current.contentWindow.postMessage(JSON.stringify(msg), '*');
       
-      // Vẫn gửi định dạng chuẩn của YouTube để phòng hờ
-      iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ event: 'command', func, args: args || [] }),
-        '*'
-      );
+      // Lệnh trực tiếp cho Proxy yt_player.php
+      iframeRef.current.contentWindow.postMessage({ func, args: args || [] }, '*');
     } catch (e) {}
   }, []);
 
@@ -140,12 +134,15 @@ function App() {
           }
         }
         
-        // Bắt lỗi từ YouTube iframe
-        if (data.event === 'onError') {
-          console.warn('YouTube Player Error:', data.info);
-          setTubeConnecting(false);
-          playNextRef.current?.();
+        if (data.event === 'listening' || data.event === 'onReady' || data.type === 'VTEEN_READY') {
+          ytListeningRef.current = true;
+          const pending = pendingPlayRef.current;
+          if (pending) {
+            pendingPlayRef.current = null;
+            ytSendPlayRef.current(pending);
+          }
         }
+        
         if (data.event === 'infoDelivery' && data.info) {
           const ct = data.info.currentTime;
           if (typeof ct === 'number' && Number.isFinite(ct) && ct >= 0) {
@@ -156,7 +153,9 @@ function App() {
             setDuration(dur);
           }
         }
-      } catch (err) {}
+      } catch (err) {
+        // Silent error
+      }
     };
 
     window.addEventListener('message', onMessage);
@@ -199,17 +198,6 @@ function App() {
     },
     [sendCommand]
   );
-
-  useEffect(() => {
-    ytSendPlayRef.current = ytSendPlay;
-  }, [ytSendPlay]);
-
-  const stopProgressLoop = () => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
-    }
-  };
 
   const playVideo = useCallback(
     (video: Video, list?: Video[]) => {
@@ -287,16 +275,6 @@ function App() {
     });
   }, [playVideo]);
 
-  const playPrevRef = useRef<(() => void) | undefined>(undefined);
-  useEffect(() => { playPrevRef.current = playPrev; }, [playPrev]);
-  useEffect(() => { playNextRef.current = playNext; }, [playNext]);
-
-  const handleSeek = (val: number) => {
-    setCurrentTime(val);
-    sendCommand('seekTo', [val, true]);
-  };
-
-  // Media Session
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentVideo) return;
     navigator.mediaSession.metadata = new window.MediaMetadata({
@@ -319,7 +297,6 @@ function App() {
     navigator.mediaSession.setActionHandler('nexttrack', () => playNextRef.current?.());
     navigator.mediaSession.setActionHandler('previoustrack', () => playPrevRef.current?.());
     
-    // Đảm bảo trạng thái luôn được cập nhật lên hệ thống
     navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
   }, [currentVideo, isPlaying, sendCommand]);
 
@@ -376,7 +353,6 @@ function App() {
             </motion.main>
           </AnimatePresence>
 
-          {/* Mini Player Bar */}
           <AnimatePresence>
             {currentVideo && !watchingSlug && (
               <motion.div
@@ -449,7 +425,6 @@ function App() {
             )}
           </AnimatePresence>
 
-          {/* Full Screen Player Overlay (Music App Feel) */}
           <AnimatePresence>
             {tubeExpanded && currentVideo && (
               <motion.div
@@ -459,7 +434,6 @@ function App() {
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 className="fixed inset-0 z-[900] bg-[#050510]/95 backdrop-blur-2xl flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
               >
-                {/* Header */}
                 <div className="flex shrink-0 justify-between items-center px-6 pt-4">
                   <button
                     onClick={() => setTubeExpanded(false)}
@@ -473,7 +447,6 @@ function App() {
                   <div className="w-10" />
                 </div>
 
-                {/* Main Content: Rotating CD */}
                 <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 overflow-hidden">
                   <div className="relative">
                     <motion.div
@@ -481,26 +454,14 @@ function App() {
                       transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
                       className="relative w-[75vw] aspect-square max-w-sm rounded-full shadow-[0_0_80px_rgba(0,0,0,0.8)] border-8 border-[#111]"
                     >
-                      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary/10 to-transparent blur-3xl" />
                       <img
                         src={currentVideo.thumbnail}
                         className="w-full h-full rounded-full object-cover shadow-2xl"
                         alt=""
                       />
-                      {/* Inner CD Ring */}
                       <div className="absolute inset-0 rounded-full border-[20px] border-black/10 pointer-events-none" />
-                      {/* Center Hole */}
                       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-[#050510] border-4 border-white/10 shadow-inner" />
                     </motion.div>
-                    
-                    {/* Visualizer Pulsing Effect */}
-                    {isPlaying && (
-                      <motion.div
-                        animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0, 0.3] }}
-                        transition={{ repeat: Infinity, duration: 3 }}
-                        className="absolute inset-0 rounded-full border-2 border-primary/20 pointer-events-none"
-                      />
-                    )}
                   </div>
 
                   <div className="mt-12 text-center w-full max-w-sm">
@@ -509,9 +470,7 @@ function App() {
                   </div>
                 </div>
 
-                {/* Controls Area */}
-                <div className="px-8 pb-12 w-full max-w-lg mx-auto">
-                  {/* Seekbar */}
+                <div className="px-8 pb-12 w-full max-lg mx-auto">
                   <div className="space-y-3">
                     <div
                       className="h-1.5 w-full bg-white/10 rounded-full relative cursor-pointer group"
@@ -525,10 +484,6 @@ function App() {
                         className="absolute h-full bg-primary rounded-full shadow-[0_0_15px_#06b6d4]"
                         style={{ width: `${progress}%` }}
                       />
-                      <div
-                        className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg"
-                        style={{ left: `calc(${progress}% - 8px)` }}
-                      />
                     </div>
                     <div className="flex justify-between text-[11px] font-mono text-white/30 tracking-tighter">
                       <span>{fmt(currentTime)}</span>
@@ -536,12 +491,8 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Playback Buttons */}
                   <div className="flex items-center justify-between mt-8">
-                    <button className="text-white/20 active:text-white transition-colors">
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M7 7h2v10H7zm3 5 8 5V7z"/></svg>
-                    </button>
-                    <div className="flex items-center gap-8">
+                    <div className="flex items-center gap-8 mx-auto">
                       <button onClick={playPrev} className="text-white/60 active:text-white active:scale-90 transition-all">
                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
                       </button>
@@ -561,41 +512,29 @@ function App() {
                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
                       </button>
                     </div>
-                    <button className="text-white/20 active:text-white transition-colors">
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M7 7h10v2H7zm0 4h10v2H7zm0 4h10v2H7z"/></svg>
-                    </button>
                   </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Hidden YouTube iframe (Luôn tồn tại để giữ nhạc chạy xuyên suốt) */}
-          {user && (
-            <div className="fixed bottom-[-240px] right-0 pointer-events-none z-[1] opacity-0">
-              <iframe
-                ref={iframeRef}
-                src={iframeSrc}
-                allow="autoplay; encrypted-media; fullscreen"
-                title="yt-player"
-                className="w-[200px] h-[200px]"
-                onLoad={() => {
-                  ytListeningRef.current = false; // Reset trạng thái khi iframe load lại
-                  const gen = ++iframeLoadGenRef.current;
-                  window.setTimeout(() => {
-                    if (gen !== iframeLoadGenRef.current) return;
-                    console.log('YouTube Iframe Loaded, Gen:', gen);
-                    // Không set ytListeningRef = true ở đây, để yt_player.php tự báo 'listening'
-                    const pending = pendingPlayRef.current;
-                    if (pending) {
-                      pendingPlayRef.current = null;
-                      ytSendPlayRef.current(pending);
-                    }
-                  }, 800);
-                }}
-              />
-            </div>
-          )}
+          <div className="fixed bottom-0 right-0 z-[-1] overflow-hidden" style={{ width: '1px', height: '1px', opacity: 0.01 }}>
+            <iframe
+              ref={iframeRef}
+              src={iframeSrc}
+              allow="autoplay; encrypted-media; fullscreen"
+              title="yt-player"
+              className="w-full h-full"
+              onLoad={() => {
+                ytListeningRef.current = false;
+                const pending = pendingPlayRef.current;
+                if (pending) {
+                  pendingPlayRef.current = null;
+                  ytSendPlayRef.current(pending);
+                }
+              }}
+            />
+          </div>
 
           <AnimatePresence>
             {watchingSlug && (
