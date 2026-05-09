@@ -405,8 +405,14 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         setWebServers(servers);
         if (selectedKey === '1') {
           const vipSrc = prepareServerOneHtml(embedHtml);
-          if (!vipSrc) throw new Error('Khong tim thay iframe server VIP');
-          setWebPlayer({ html: null, src: vipSrc, videoSrc: null });
+          if (vipSrc) {
+            setWebPlayer({ html: null, src: vipSrc, videoSrc: null });
+          } else if (currentEmbedSrc) {
+            // Fallback ngay lập tức nếu không tìm thấy iframe nhưng có link API
+            setWebPlayer({ html: null, src: null, videoSrc: null });
+          } else {
+            throw new Error('Khong tim thay iframe server VIP');
+          }
         } else {
           const videoSrc = extractVideoSource(embedHtml);
           setWebPlayer({ html: videoSrc ? null : prepareEmbedHtml(embedHtml), src: null, videoSrc });
@@ -416,11 +422,14 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         if (Number.isFinite(selectedServer) && selectedServer !== activeServer) {
           setActiveServer(selectedServer);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
           setWebServers({});
           setWebPlayer({ html: null, src: null, videoSrc: null });
-          setPlayerError('Khong tai duoc player web VTEEN');
+          // Chỉ hiện lỗi nếu KHÔNG có link API dự phòng
+          if (!currentEmbedSrc) {
+            setPlayerError(err instanceof Error ? err.message : 'Khong tai duoc player web VTEEN');
+          }
         }
       } finally {
         if (!cancelled) setPlayerLoading(false);
