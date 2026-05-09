@@ -27,6 +27,11 @@ interface MovieDetailsResponse {
   message?: string;
 }
 
+interface WebPlayerState {
+  html: string | null;
+  src: string | null;
+}
+
 interface WatchScreenProps {
   slug: string;
   onBack: () => void;
@@ -217,13 +222,10 @@ const prepareEmbedHtml = (html: string) => {
 };
 
 const prepareServerOneHtml = (html: string) => {
-  const prepared = prepareEmbedHtml(html);
-  const forceFrameCss = `<style>
-    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #000; }
-    #fallback-frame, iframe { width: 100% !important; height: 100% !important; border: 0 !important; display: block !important; background: #000 !important; }
-  </style>`;
-
-  return prepared.replace(/<\/head>/i, `${forceFrameCss}</head>`);
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const iframeSrc = doc.querySelector<HTMLIFrameElement>('iframe')?.getAttribute('src');
+  if (!iframeSrc) return null;
+  return new URL(iframeSrc, CONFIG.SITE_BASE_URL).toString();
 };
 
 const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized }) => {
@@ -234,7 +236,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   const [fav, setFav] = useState(false);
   const [activeServer, setActiveServer] = useState(1);
   const [webServers, setWebServers] = useState<Record<string, string>>({});
-  const [webPlayerHtml, setWebPlayerHtml] = useState<string | null>(null);
+  const [webPlayer, setWebPlayer] = useState<WebPlayerState>({ html: null, src: null });
   const [playerLoading, setPlayerLoading] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
 
