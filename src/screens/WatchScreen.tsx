@@ -297,7 +297,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           const savedEp = saved ? movieDetails.episodes.find((ep: Episode) => ep.episode === saved.lastEpisode) : null;
           const nextEp = savedEp || movieDetails.episodes[0];
           setCurrentEp(nextEp);
-          setActiveServer(1);
+          setActiveServer(2);
           saveToHistory({
             slug,
             title: movieDetails.title,
@@ -337,20 +337,54 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   const currentEmbedSrc = buildEmbedSrc(currentEmbedUrl, currentHost);
 
   useEffect(() => {
-    setPlayerStarted(false);
-    setShowPlayerHelp(false);
-  }, [currentEmbedSrc]);
+    if (!currentEp) return;
 
-  useEffect(() => {
-    if (!playerStarted) return;
-    const timer = window.setTimeout(() => setShowPlayerHelp(true), 4500);
-    return () => window.clearTimeout(timer);
-  }, [playerStarted, currentEmbedSrc]);
+    let cancelled = false;
 
-  const openPlayerOutside = () => {
-    if (!currentEmbedSrc) return;
-    window.open(currentEmbedSrc, '_blank', 'noopener,noreferrer');
-  };
+    const loadWebPlayer = async () => {
+      setPlayerLoading(true);
+      setPlayerError(null);
+      setWebPlayerHtml(null);
+
+      try {
+        const watchHtml = await fetchVteenText(buildWebWatchPath(slug, currentEp.episode));
+        const servers = parseWebServers(watchHtml);
+        const selectedKey = servers[String(activeServer)]
+          ? String(activeServer)
+          : servers['2']
+            ? '2'
+            : Object.keys(servers)[0];
+
+        if (!selectedKey || !servers[selectedKey]) {
+          throw new Error('Khong tim thay server web');
+        }
+
+        const embedHtml = await fetchVteenText(toVteenPath(servers[selectedKey]));
+
+        if (cancelled) return;
+        setWebServers(servers);
+        setWebPlayerHtml(prepareEmbedHtml(embedHtml));
+
+        const selectedServer = Number(selectedKey);
+        if (Number.isFinite(selectedServer) && selectedServer !== activeServer) {
+          setActiveServer(selectedServer);
+        }
+      } catch {
+        if (!cancelled) {
+          setWebServers({});
+          setPlayerError('Khong tai duoc player web VTEEN');
+        }
+      } finally {
+        if (!cancelled) setPlayerLoading(false);
+      }
+    };
+
+    loadWebPlayer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeServer, currentEp, slug]);
 
   if (loading) {
     return (
@@ -395,11 +429,21 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
       {/* Video Player Area */}
       <div className="relative z-50 w-full shrink-0 aspect-video max-h-[42vh] bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
-        {currentEp && currentEmbedSrc ? (
+        {currentEp && (webPlayerHtml || currentEmbedSrc) ? (
           <>
-            {playerStarted && (
+            {webPlayerHtml ? (
               <iframe 
-                key={`${currentEp.episode}-${activeServer}`}
+                key={`${currentEp.episode}-${activeServer}-${webServers[String(activeServer)] || 'web'}`}
+                srcDoc={webPlayerHtml}
+                className="absolute inset-0 w-full h-full border-0 bg-black"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                title="Player"
+              />
+            ) : currentEmbedSrc && !playerLoading ? (
+              <iframe 
+                key={`${currentEp.episode}-${activeServer}-api`}
                 src={currentEmbedSrc}
                 className="absolute inset-0 w-full h-full border-0 bg-black"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
@@ -407,45 +451,20 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
                 referrerPolicy="no-referrer-when-downgrade"
                 title="Player"
               />
-            )}
+            ) : null}
 
-            {!playerStarted && (
-              <button
-                type="button"
-                onClick={() => setPlayerStarted(true)}
-                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#05070a] text-white transition active:scale-[0.99]"
-              >
-                <span className="grid h-16 w-16 place-items-center rounded-full bg-primary text-black shadow-[0_0_32px_rgba(6,182,212,0.45)]">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="ml-1 h-8 w-8">
-                    <path d="M8 5v14l11-7z" />
+            {(playerLoading || playerError) && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#05070a] px-6 text-center">
+                {playerLoading ? (
+                  <div className="h-9 w-9 rounded-full border-3 border-primary/25 border-t-primary animate-spin" />
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-9 w-9 text-primary">
+                    <path d="M12 9v4M12 17h.01M10.3 4.3L2.8 17.2A2 2 0 004.5 20h15a2 2 0 001.7-2.8L13.7 4.3a2 2 0 00-3.4 0z" />
                   </svg>
+                )}
+                <span className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
+                  {playerLoading ? 'Dang lay player VTEEN...' : playerError}
                 </span>
-                <span className="text-xs font-black uppercase tracking-[0.22em] text-primary">
-                  Phat tap {currentEp.episode}
-                </span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={openPlayerOutside}
-              className="absolute right-3 top-3 z-20 rounded-xl border border-white/10 bg-black/65 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-white/85 backdrop-blur-md active:scale-95"
-            >
-              Mo ngoai
-            </button>
-
-            {playerStarted && showPlayerHelp && (
-              <div className="absolute inset-x-3 bottom-3 z-20 flex items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-black/75 px-3 py-3 backdrop-blur-md">
-                <span className="text-[10px] font-bold leading-snug text-white/75">
-                  Neu khung phat van trang, mo bang trinh phat ngoai.
-                </span>
-                <button
-                  type="button"
-                  onClick={openPlayerOutside}
-                  className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[9px] font-black uppercase tracking-widest text-black"
-                >
-                  Mo
-                </button>
               </div>
             )}
           </>
@@ -460,17 +479,18 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       {/* Server Selector Buttons */}
       <div className="shrink-0 px-6 py-4 flex gap-3 border-b border-white/5">
         <button 
+          disabled={playerLoading || (!webServers['1'] && !currentEp?.embed_url)}
           onClick={() => setActiveServer(1)}
-          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeServer === 1 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-card text-text-dim border border-white/5'}`}
+          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${playerLoading || (!webServers['1'] && !currentEp?.embed_url) ? 'opacity-30 grayscale' : activeServer === 1 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-card text-text-dim border border-white/5'}`}
         >
-          SERVER 1 (VTEEN)
+          SERVER VIP
         </button>
         <button 
-          disabled={!currentEp?.embed_url_2}
+          disabled={playerLoading || (!webServers['2'] && !currentEp?.embed_url_2)}
           onClick={() => setActiveServer(2)}
-          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${!currentEp?.embed_url_2 ? 'opacity-20 grayscale' : (activeServer === 2 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-card text-text-dim border border-white/5')}`}
+          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${playerLoading || (!webServers['2'] && !currentEp?.embed_url_2) ? 'opacity-30 grayscale' : (activeServer === 2 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-card text-text-dim border border-white/5')}`}
         >
-          SERVER 2 (BACKUP)
+          SERVER 2
         </button>
       </div>
 
