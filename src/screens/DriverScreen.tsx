@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { CONFIG } from '../config';
 
 interface DriveFile {
@@ -14,6 +15,8 @@ interface DriveFile {
   description?: string;
   short_code?: string;
   account_source: string;
+  expiresText?: string;
+  source?: 'api' | 'web';
 }
 
 interface Quota {
@@ -32,9 +35,127 @@ interface FileIconInfo {
   label: string;
 }
 
+interface DriverApiResponse {
+  status: string;
+  data?: DriveFile[];
+  accounts?: string[];
+  quota?: Quota;
+  message?: string;
+}
+
+interface WebDriveState {
+  files: DriveFile[];
+  accounts: string[];
+}
+
 interface DriverProps {
   user: DriverUser;
 }
+
+const WEB_DRIVE_PATH = '/driver/index.php';
+
+const unique = (values: string[]) => Array.from(new Set(values.filter(Boolean)));
+
+const decodeHtml = (value: string) => {
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = value;
+  return textarea.value.replace(/\s+/g, ' ').trim();
+};
+
+const inferMimeType = (name: string, hasThumbnail: boolean) => {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  if (hasThumbnail || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(ext)) return 'image/jpeg';
+  if (['zip', 'rar', '7z'].includes(ext)) return 'application/zip';
+  if (['mp4', 'mov', 'mkv', 'webm'].includes(ext)) return 'video/mp4';
+  if (['mp3', 'wav', 'm4a', 'flac'].includes(ext)) return 'audio/mpeg';
+  return 'application/octet-stream';
+};
+
+const parseWebDrive = (html: string): WebDriveState => {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const accounts = unique(
+    Array.from(doc.querySelectorAll<HTMLAnchorElement>('.vtd-tab[href*="account="]'))
+      .map((link) => {
+        try {
+          return new URL(link.href, CONFIG.SITE_BASE_URL).searchParams.get('account') || '';
+        } catch {
+          return '';
+        }
+      })
+  );
+
+  const files = Array.from(doc.querySelectorAll<HTMLElement>('.vtd-card'))
+    .map((card): DriveFile | null => {
+      const titleLink = card.querySelector<HTMLAnchorElement>('.vtd-title');
+      const title = decodeHtml(titleLink?.getAttribute('title') || titleLink?.textContent || '');
+      const rawHref = titleLink?.getAttribute('href') || '';
+      if (!title || !rawHref) return null;
+
+      const url = new URL(rawHref, CONFIG.SITE_BASE_URL);
+      const shortCode = url.searchParams.get('s') || rawHref;
+      const account = decodeHtml(card.querySelector('.vtd-badge')?.textContent || 'drive').toLowerCase();
+      const image = card.querySelector<HTMLImageElement>('.vtd-preview img');
+      const meta = Array.from(card.querySelectorAll('.vtd-meta span')).map((item) => decodeHtml(item.textContent || ''));
+      const expiresText = meta.find((item) => /ngày|gio|giờ|phút|hạn|xóa/i.test(item) && item !== meta[1]);
+
+      return {
+        id: shortCode,
+        name: title,
+        mimeType: inferMimeType(title, Boolean(image?.src)),
+        size: meta[0] || '',
+        modifiedTime: meta[1] || '',
+        thumbnailLink: image?.src,
+        webViewLink: url.toString(),
+        webContentLink: url.toString(),
+        short_code: shortCode,
+        account_source: account,
+        expiresText,
+        source: 'web'
+      };
+    })
+    .filter((file): file is DriveFile => Boolean(file));
+
+  return { files, accounts: accounts.length ? accounts : ['all'] };
+};
+
+const mergeFiles = (apiFiles: DriveFile[], webFiles: DriveFile[]) => {
+  const seen = new Set<string>();
+  return [...webFiles, ...apiFiles].filter((file) => {
+    const key = file.short_code || file.webViewLink || `${file.account_source}:${file.id}:${file.name}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const buildWebDrivePath = (account: string, query: string) => {
+  const params = new URLSearchParams();
+  params.set('account', account);
+  params.set('refresh', '1');
+  if (query.trim()) params.set('q', query.trim());
+  return `${WEB_DRIVE_PATH}?${params.toString()}`;
+};
+
+const fetchWebDriveHtml = async (account: string, query: string) => {
+  const path = buildWebDrivePath(account, query);
+
+  if (import.meta.env.DEV) {
+    const response = await fetch(`/__vteen${path}`, { credentials: 'include' });
+    if (!response.ok) throw new Error(`Web Drive HTTP ${response.status}`);
+    return response.text();
+  }
+
+  const url = `${CONFIG.SITE_BASE_URL}${path}`;
+  if (Capacitor.isNativePlatform()) {
+    const response = await CapacitorHttp.get({ url, responseType: 'text' });
+    if (response.status < 200 || response.status >= 300) throw new Error(`Web Drive HTTP ${response.status}`);
+    return typeof response.data === 'string' ? response.data : String(response.data ?? '');
+  }
+
+  const response = await fetch(url, { credentials: 'include' });
+  if (!response.ok) throw new Error(`Web Drive HTTP ${response.status}`);
+  return response.text();
+};
 
 const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   const [files, setFiles] = useState<DriveFile[]>([]);
