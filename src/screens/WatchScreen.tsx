@@ -224,9 +224,23 @@ const prepareEmbedHtml = (html: string) => {
 
 const prepareServerOneHtml = (html: string) => {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const iframeSrc = doc.querySelector<HTMLIFrameElement>('iframe')?.getAttribute('src');
+  // Tìm iframe có chứa link video (thường là ok.ru, youtube, hoặc stream)
+  const iframe = doc.querySelector('iframe[src*="ok.ru"], iframe[src*="youtube"], iframe[src*="video"], iframe[src*="embed"]');
+  const fallbackIframe = doc.querySelector('iframe');
+  const target = iframe || fallbackIframe;
+  
+  const iframeSrc = target?.getAttribute('src');
   if (!iframeSrc) return null;
-  return new URL(iframeSrc, CONFIG.SITE_BASE_URL).toString();
+  
+  // Nối link nếu là link tương đối
+  let finalSrc = iframeSrc;
+  if (iframeSrc.startsWith('//')) {
+    finalSrc = 'https:' + iframeSrc;
+  } else if (!iframeSrc.startsWith('http')) {
+    finalSrc = new URL(iframeSrc, CONFIG.SITE_BASE_URL).toString();
+  }
+  
+  return finalSrc;
 };
 
 const extractVideoSource = (html: string) => {
