@@ -65,8 +65,8 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
     }
     
     if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) {
-      // Dùng link trực tiếp với tham số origin để YouTube nhận diện đúng trên iPhone
-      return `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1&origin=https://vteen.shop`;
+      // Dùng file proxy trên server để YouTube cho phép phát phim
+      return `https://vteen.shop/yt_player.php?id=${id}`;
     }
   }
 
@@ -260,8 +260,8 @@ const prepareServerOneHtml = (html: string) => {
     }
     
     if (id && id.length === 11) {
-      // Dùng link trực tiếp với tham số origin để YouTube nhận diện đúng trên iPhone
-      return `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1&origin=https://vteen.shop`;
+      // Dùng file proxy trên server để YouTube cho phép phát phim
+      return `https://vteen.shop/yt_player.php?id=${id}`;
     }
   }
   
