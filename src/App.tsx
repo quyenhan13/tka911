@@ -95,7 +95,9 @@ function App() {
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 className="fixed inset-0 z-[1000]"
               >
-                <WatchScreen slug={watchingSlug} onBack={() => setWatchingSlug(null)} onUnauthorized={handleLogout} />
+                <ErrorBoundary>
+                  <WatchScreen slug={watchingSlug} onBack={() => setWatchingSlug(null)} onUnauthorized={handleLogout} />
+                </ErrorBoundary>
               </motion.div>
             )}
           </AnimatePresence>

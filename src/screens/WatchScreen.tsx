@@ -221,22 +221,25 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       } catch {
         throw new Error(`API tra ve khong phai JSON (${response.status}): ${text.slice(0, 120)}`);
       }
-      if (result.status === 'success' && result.data) {
-        setDetails(result.data);
-        if (result.data.episodes.length > 0) {
+      const movieDetails = normalizeMovieDetails(result.data);
+      if (result.status === 'success' && movieDetails) {
+        setDetails(movieDetails);
+        if (movieDetails.episodes.length > 0) {
           const saved = getHistory().find(item => item.slug === slug);
-          const savedEp = saved ? result.data.episodes.find((ep: Episode) => ep.episode === saved.lastEpisode) : null;
-          const nextEp = savedEp || result.data.episodes[0];
+          const savedEp = saved ? movieDetails.episodes.find((ep: Episode) => ep.episode === saved.lastEpisode) : null;
+          const nextEp = savedEp || movieDetails.episodes[0];
           setCurrentEp(nextEp);
           setActiveServer(1);
           saveToHistory({
             slug,
-            title: result.data.title,
-            poster: result.data.poster,
+            title: movieDetails.title,
+            poster: movieDetails.poster,
             lastEpisode: nextEp.episode
           });
           
           // Lưu vào lịch sử
+        } else {
+          setError('Phim nay chua co link tap hop le');
         }
       } else {
         if (response.status === 401) {
@@ -314,8 +317,9 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
               key={`${currentEp.episode}-${activeServer}`}
               src={currentEmbedSrc}
               className="absolute inset-0 w-full h-full border-0 bg-black"
-              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-              referrerPolicy="strict-origin-when-cross-origin"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
               title="Player"
             />
           </>
