@@ -30,7 +30,29 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
   const value = embedUrl?.trim();
   if (!value) return null;
 
-  // 1. Xử lý các link, đảm bảo HTTPS và đúng root domain
+  // 1. Xử lý link YouTube để dùng qua proxy (cần thiết cho một số phim trên server 1)
+  const hasYTKeyword = value.includes('youtube.com') || value.includes('youtu.be');
+  const isYTId = value.length === 11 && !value.includes('.') && !value.includes('/');
+  const isYouTube = (host?.toLowerCase().includes('youtube') && (hasYTKeyword || isYTId)) || hasYTKeyword;
+
+  if (isYouTube) {
+    let id = value;
+    try {
+      if (value.includes('v=')) {
+        id = new URL(value).searchParams.get('v') || value;
+      } else if (value.includes('embed/')) {
+        id = value.split('embed/')[1].split('?')[0];
+      } else if (value.includes('youtu.be/')) {
+        id = value.split('youtu.be/')[1].split('?')[0];
+      }
+    } catch {}
+    
+    if (id && id.length <= 15) {
+      return `${CONFIG.SITE_BASE_URL}/yt_player.php?id=${id}`;
+    }
+  }
+
+  // 2. Xử lý các link khác, đảm bảo HTTPS và đúng root domain
   let src = value;
   if (value.startsWith('//')) {
     src = `https:${value}`;
