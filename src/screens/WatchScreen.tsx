@@ -246,7 +246,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fav, setFav] = useState(false);
-  const [activeServer, setActiveServer] = useState(2);
+  const [activeServer, setActiveServer] = useState(1);
   const [webServers, setWebServers] = useState<Record<string, string>>({});
   const [webPlayer, setWebPlayer] = useState<WebPlayerState>({ html: null, src: null, videoSrc: null });
   const [playerLoading, setPlayerLoading] = useState(false);
@@ -272,7 +272,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
   const selectEpisode = (ep: Episode, movieDetails = details) => {
     setCurrentEp(ep);
-    setActiveServer(2);
+    setActiveServer(1);
     if (movieDetails) {
       saveToHistory({
         slug,
@@ -321,7 +321,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           const savedEp = saved ? movieDetails.episodes.find((ep: Episode) => ep.episode === saved.lastEpisode) : null;
           const nextEp = savedEp || movieDetails.episodes[0];
           setCurrentEp(nextEp);
-          setActiveServer(2);
+          setActiveServer(1);
           saveToHistory({
             slug,
             title: movieDetails.title,
@@ -375,10 +375,10 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         const servers = parseWebServers(watchHtml);
         const selectedKey = servers[String(activeServer)]
           ? String(activeServer)
-          : servers['2']
-            ? '2'
-            : servers['1']
-              ? '1'
+          : servers['1']
+            ? '1'
+            : servers['2']
+              ? '2'
             : Object.keys(servers)[0];
 
         if (!selectedKey || !servers[selectedKey]) {
