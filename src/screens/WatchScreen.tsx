@@ -59,7 +59,7 @@ const getYouTubeId = (value: string) => {
 };
 
 const buildYouTubeEmbedUrl = (id: string) =>
-  `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1`;
+  `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&origin=${encodeURIComponent(CONFIG.SITE_BASE_URL)}&widget_referrer=${encodeURIComponent(CONFIG.SITE_BASE_URL)}`;
 
 const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
   const value = embedUrl?.trim();
@@ -244,6 +244,17 @@ const toVteenPath = (value: string) => {
 
   return `/${value.replace(/^\/+/, '')}`;
 };
+
+const toVteenUrl = (value: string) => {
+  if (value.startsWith('http')) return value;
+  return `${CONFIG.SITE_BASE_URL}${value.startsWith('/') ? value : `/${value}`}`;
+};
+
+const hasYouTubeEmbed = (html: string) => {
+  const lower = html.toLowerCase();
+  return lower.includes('youtube.com') || lower.includes('youtu.be') || lower.includes('youtube-nocookie.com');
+};
+
 const prepareEmbedHtml = (html: string) => {
   if (!html || !html.trim()) return '<html><body style="background:#000;color:#666;display:flex;align-items:center;justify-content:center">Loading...</body></html>';
   
@@ -479,7 +490,16 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
         // SỬ DỤNG srcDoc CHO TẤT CẢ CÁC SERVER ĐỂ VƯỢT LỖI X-Frame-Options (Từ chối kết nối)
         const embedHtml = await fetchVteenText(embedPath);
-        
+
+        if (hasYouTubeEmbed(embedHtml)) {
+          const selectedServer = Number(selectedKey);
+          if (Number.isFinite(selectedServer) && selectedServer !== activeServer) {
+            setActiveServer(selectedServer);
+          }
+          setWebPlayer({ html: null, src: toVteenUrl(embedPath), videoSrc: null });
+          return;
+        }
+
         if (selectedKey === '1') {
           const vipSrc = prepareServerOneHtml(embedHtml);
           const videoSrc = extractVideoSource(embedHtml);
