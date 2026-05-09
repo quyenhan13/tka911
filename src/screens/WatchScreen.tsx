@@ -67,10 +67,9 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
     if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) {
       const params = new URLSearchParams({
         id: id,
-        autoplay: '1',
-        origin: CONFIG.SITE_BASE_URL
+        autoplay: '1'
       });
-      // Sử dụng proxy yt_player.php trên server để tránh lỗi 150/153 trên app
+      // Sử dụng proxy đơn giản hóa để tránh lỗi 153
       return `${CONFIG.SITE_BASE_URL}/yt_player.php?${params.toString()}`;
     }
   }
@@ -252,6 +251,20 @@ const prepareServerOneHtml = (html: string) => {
     finalSrc = 'https:' + iframeSrc;
   } else if (!iframeSrc.startsWith('http')) {
     finalSrc = new URL(iframeSrc, CONFIG.SITE_BASE_URL).toString();
+  }
+
+  // MỚI: Nếu là link YouTube, phải đẩy qua proxy yt_player.php
+  if (finalSrc.includes('youtube.com') || finalSrc.includes('youtu.be')) {
+    let id = '';
+    if (finalSrc.includes('v=')) {
+      id = new URL(finalSrc).searchParams.get('v') || '';
+    } else {
+      const parts = finalSrc.split('/');
+      id = parts[parts.length - 1].split('?')[0];
+    }
+    if (id && id.length === 11) {
+      return `${CONFIG.SITE_BASE_URL}/yt_player.php?id=${id}&autoplay=1`;
+    }
   }
   
   return finalSrc;
