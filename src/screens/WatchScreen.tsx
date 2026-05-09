@@ -216,13 +216,42 @@ const prepareEmbedHtml = (html: string) => {
   return cleaned.replace(/<head[^>]*>/i, (head) => `${head}${baseTag}`);
 };
 
+const prepareServerOneHtml = (html: string) => {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const iframeSrc = doc.querySelector<HTMLIFrameElement>('iframe')?.getAttribute('src');
+
+  if (!iframeSrc) return prepareEmbedHtml(html);
+
+  const url = new URL(iframeSrc, CONFIG.SITE_BASE_URL).toString();
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <style>
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #000; }
+    iframe { width: 100%; height: 100%; border: 0; display: block; background: #000; }
+  </style>
+</head>
+<body>
+  <iframe
+    src="${url}"
+    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+    allowfullscreen
+    referrerpolicy="strict-origin-when-cross-origin"
+    sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation-by-user-activation"
+  ></iframe>
+</body>
+</html>`;
+};
+
 const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized }) => {
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [currentEp, setCurrentEp] = useState<Episode | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fav, setFav] = useState(false);
-  const [activeServer, setActiveServer] = useState(2);
+  const [activeServer, setActiveServer] = useState(1);
   const [webServers, setWebServers] = useState<Record<string, string>>({});
   const [webPlayerHtml, setWebPlayerHtml] = useState<string | null>(null);
   const [playerLoading, setPlayerLoading] = useState(false);
@@ -248,7 +277,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
   const selectEpisode = (ep: Episode, movieDetails = details) => {
     setCurrentEp(ep);
-    setActiveServer(2);
+    setActiveServer(1);
     if (movieDetails) {
       saveToHistory({
         slug,
@@ -297,7 +326,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           const savedEp = saved ? movieDetails.episodes.find((ep: Episode) => ep.episode === saved.lastEpisode) : null;
           const nextEp = savedEp || movieDetails.episodes[0];
           setCurrentEp(nextEp);
-          setActiveServer(2);
+          setActiveServer(1);
           saveToHistory({
             slug,
             title: movieDetails.title,
@@ -351,8 +380,10 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         const servers = parseWebServers(watchHtml);
         const selectedKey = servers[String(activeServer)]
           ? String(activeServer)
-          : servers['2']
-            ? '2'
+          : servers['1']
+            ? '1'
+            : servers['2']
+              ? '2'
             : Object.keys(servers)[0];
 
         if (!selectedKey || !servers[selectedKey]) {
