@@ -5,7 +5,19 @@ const config: CapacitorConfig = {
   appName: 'VTeen',
   webDir: 'dist',
   server: {
-    cleartext: false
+    cleartext: false,
+    allowNavigation: [
+      'vteen.shop',
+      '*.vteen.shop',
+      'clbphimxua.com',
+      '*.clbphimxua.com',
+      'abysscdn.com',
+      '*.abysscdn.com',
+      'vip.opstream17.com',
+      '*.opstream17.com',
+      'cdn.plyr.io',
+      'cdn.jsdelivr.net'
+    ]
   },
   ios: {
     contentInset: 'never',

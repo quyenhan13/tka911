@@ -217,32 +217,13 @@ const prepareEmbedHtml = (html: string) => {
 };
 
 const prepareServerOneHtml = (html: string) => {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const iframeSrc = doc.querySelector<HTMLIFrameElement>('iframe')?.getAttribute('src');
-
-  if (!iframeSrc) return prepareEmbedHtml(html);
-
-  const url = new URL(iframeSrc, CONFIG.SITE_BASE_URL).toString();
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <style>
+  const prepared = prepareEmbedHtml(html);
+  const forceFrameCss = `<style>
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #000; }
-    iframe { width: 100%; height: 100%; border: 0; display: block; background: #000; }
-  </style>
-</head>
-<body>
-  <iframe
-    src="${url}"
-    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-    allowfullscreen
-    referrerpolicy="strict-origin-when-cross-origin"
-    sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation-by-user-activation"
-  ></iframe>
-</body>
-</html>`;
+    #fallback-frame, iframe { width: 100% !important; height: 100% !important; border: 0 !important; display: block !important; background: #000 !important; }
+  </style>`;
+
+  return prepared.replace(/<\/head>/i, `${forceFrameCss}</head>`);
 };
 
 const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized }) => {
