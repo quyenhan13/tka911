@@ -159,16 +159,16 @@ const writeDriveCache = (account: string, query: string, cache: DriveCache) => {
   }
 };
 
-const buildWebDrivePath = (account: string, query: string) => {
+const buildWebDrivePath = (account: string, query: string, forceRefresh = false) => {
   const params = new URLSearchParams();
   params.set('account', account);
-  params.set('refresh', '1');
+  if (forceRefresh) params.set('refresh', '1');
   if (query.trim()) params.set('q', query.trim());
   return `${WEB_DRIVE_PATH}?${params.toString()}`;
 };
 
-const fetchWebDriveHtml = async (account: string, query: string) => {
-  const path = buildWebDrivePath(account, query);
+const fetchWebDriveHtml = async (account: string, query: string, forceRefresh = false) => {
+  const path = buildWebDrivePath(account, query, forceRefresh);
 
   if (import.meta.env.DEV) {
     const response = await fetch(`/__vteen${path}`, { credentials: 'include' });
