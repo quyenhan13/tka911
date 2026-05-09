@@ -356,7 +356,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     const loadWebPlayer = async () => {
       setPlayerLoading(true);
       setPlayerError(null);
-      setWebPlayerHtml(null);
+      setWebPlayer({ html: null, src: null });
 
       try {
         const watchHtml = await fetchVteenText(buildWebWatchPath(slug, currentEp.episode));
@@ -377,7 +377,13 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
         if (cancelled) return;
         setWebServers(servers);
-        setWebPlayerHtml(selectedKey === '1' ? prepareServerOneHtml(embedHtml) : prepareEmbedHtml(embedHtml));
+        if (selectedKey === '1') {
+          const vipSrc = prepareServerOneHtml(embedHtml);
+          if (!vipSrc) throw new Error('Khong tim thay iframe server VIP');
+          setWebPlayer({ html: null, src: vipSrc });
+        } else {
+          setWebPlayer({ html: prepareEmbedHtml(embedHtml), src: null });
+        }
 
         const selectedServer = Number(selectedKey);
         if (Number.isFinite(selectedServer) && selectedServer !== activeServer) {
@@ -386,6 +392,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       } catch {
         if (!cancelled) {
           setWebServers({});
+          setWebPlayer({ html: null, src: null });
           setPlayerError('Khong tai duoc player web VTEEN');
         }
       } finally {
@@ -443,12 +450,22 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
       {/* Video Player Area */}
       <div className="relative z-50 w-full shrink-0 aspect-video max-h-[42vh] bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
-        {currentEp && (webPlayerHtml || currentEmbedSrc || playerLoading || playerError) ? (
+        {currentEp && (webPlayer.html || webPlayer.src || currentEmbedSrc || playerLoading || playerError) ? (
           <>
-            {webPlayerHtml ? (
+            {webPlayer.src ? (
+              <iframe 
+                key={`${currentEp.episode}-${activeServer}-${webPlayer.src}`}
+                src={webPlayer.src}
+                className="absolute inset-0 w-full h-full border-0 bg-black"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                title="Player"
+              />
+            ) : webPlayer.html ? (
               <iframe 
                 key={`${currentEp.episode}-${activeServer}-${webServers[String(activeServer)] || 'web'}`}
-                srcDoc={webPlayerHtml}
+                srcDoc={webPlayer.html}
                 className="absolute inset-0 w-full h-full border-0 bg-black"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                 allowFullScreen
