@@ -50,15 +50,14 @@ function App() {
   
   const iframeSrc = useMemo(() => {
     const id = currentVideo?.id ?? bootVideoId;
-    const url = `https://vteen.shop/yt_player.php?id=${id}`;
+    const url = `https://vteen.shop/yt_player.php?id=${id}&origin=${encodeURIComponent(window.location.origin)}`;
     
     if (import.meta.env.DEV) {
-      // Dùng proxy của Vite để tránh lỗi X-Frame-Options trên localhost
-      return `/__vteen/yt_player.php?id=${id}`;
+      return `/__vteen/yt_player.php?id=${id}&origin=${encodeURIComponent(window.location.origin)}`;
     }
     
     return url;
-  }, []); // Bỏ dependency currentVideo để src cố định
+  }, [currentVideo?.id]); // Thêm dependency để iframe có thể load lại nếu cần (tin cậy hơn trên iOS)
 
   // Send postMessage to YouTube iframe
   const sendCommand = useCallback((func: string, args?: any[]) => {
@@ -581,17 +580,18 @@ function App() {
                 title="yt-player"
                 className="w-[200px] h-[200px]"
                 onLoad={() => {
+                  ytListeningRef.current = false; // Reset trạng thái khi iframe load lại
                   const gen = ++iframeLoadGenRef.current;
                   window.setTimeout(() => {
                     if (gen !== iframeLoadGenRef.current) return;
-                    ytListeningRef.current = true;
                     console.log('YouTube Iframe Loaded, Gen:', gen);
+                    // Không set ytListeningRef = true ở đây, để yt_player.php tự báo 'listening'
                     const pending = pendingPlayRef.current;
                     if (pending) {
                       pendingPlayRef.current = null;
                       ytSendPlayRef.current(pending);
                     }
-                  }, 600);
+                  }, 800);
                 }}
               />
             </div>
