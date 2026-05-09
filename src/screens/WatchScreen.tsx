@@ -229,7 +229,6 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
               key={`${currentEp.episode}-${activeServer}`}
               src={currentEmbedSrc}
               className="absolute inset-0 w-full h-full border-0 bg-black"
-              allowFullScreen
               allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
               referrerPolicy="strict-origin-when-cross-origin"
               title="Player"
