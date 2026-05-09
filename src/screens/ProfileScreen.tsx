@@ -1,22 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { getFavorites } from '../storage/favorites';
 import { getHistory } from '../storage/watchHistory';
 
+interface User {
+  display_name?: string;
+  role?: string;
+}
+
+interface SavedMovie {
+  slug: string;
+  title: string;
+  poster: string;
+  lastEpisode?: string;
+}
+
 interface ProfileScreenProps {
-  user: any;
+  user: User;
   onLogout: () => void;
   onWatch: (slug: string) => void;
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }) => {
-  const [favorites, setFavorites] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
+  const [favorites] = useState<SavedMovie[]>(() => getFavorites());
+  const [history] = useState<SavedMovie[]>(() => getHistory());
   const [activeTab, setActiveTab] = useState('favorites');
-
-  useEffect(() => {
-    setFavorites(getFavorites());
-    setHistory(getHistory());
-  }, []);
 
   return (
     <div className="flex flex-col gap-8 pb-10">

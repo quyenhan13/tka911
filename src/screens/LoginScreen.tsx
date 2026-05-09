@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { CONFIG } from '../config';
 
 interface LoginScreenProps {
-  onLoginSuccess: (userData: any) => void;
+  onLoginSuccess: (userData: unknown) => void;
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
@@ -31,7 +31,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       } else {
         setError(result.message || 'Sai tài khoản hoặc mật khẩu');
       }
-    } catch (err) {
+    } catch {
       setError('Kết nối máy chủ thất bại');
     } finally {
       setLoading(false);
