@@ -429,7 +429,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
       {/* Video Player Area */}
       <div className="relative z-50 w-full shrink-0 aspect-video max-h-[42vh] bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
-        {currentEp && (webPlayerHtml || currentEmbedSrc) ? (
+        {currentEp && (webPlayerHtml || currentEmbedSrc || playerLoading || playerError) ? (
           <>
             {webPlayerHtml ? (
               <iframe 
