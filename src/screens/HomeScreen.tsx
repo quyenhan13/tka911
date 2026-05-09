@@ -33,7 +33,9 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   const fetchMovies = async (pageNum: number) => {
     setLoading(true);
     try {
-      const response = await fetch(`${CONFIG.API_BASE_URL}/movies.php?page=${pageNum}&limit=20`, { credentials: 'include' });
+      const url = `${CONFIG.API_BASE_URL}/movies.php?page=${pageNum}&limit=20`;
+      console.log('Fetching movies from:', url);
+      const response = await fetch(url, { credentials: 'include' });
       const result = await response.json();
       if (result.status === 'success') {
         setMovies(result.data);
