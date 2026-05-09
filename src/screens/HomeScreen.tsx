@@ -77,7 +77,8 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   }, []);
 
   useEffect(() => {
-    fetchMovies(1);
+    const timer = window.setTimeout(() => fetchMovies(1), 0);
+    return () => window.clearTimeout(timer);
   }, [fetchMovies]);
 
   const filteredMovies = useMemo(() => {
