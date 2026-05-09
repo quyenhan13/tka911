@@ -44,6 +44,7 @@ function App() {
   const pendingPlayRef = useRef<Video | null>(null);
   const playRetryTimersRef = useRef<number[]>([]);
   const ytSendPlayRef = useRef<(video: Video) => void>(() => {});
+  const iframeLoadGenRef = useRef(0);
   const playNextRef = useRef<(() => void) | undefined>(undefined);
   const playPrevRef = useRef<(() => void) | undefined>(undefined);
 
@@ -75,6 +76,94 @@ function App() {
       progressInterval.current = null;
     }
   }, []);
+
+  const handleSeek = useCallback(
+    (seconds: number) => {
+      if (!Number.isFinite(seconds)) return;
+      const nextTime = Math.max(0, duration > 0 ? Math.min(seconds, duration) : seconds);
+      setCurrentTime(nextTime);
+      sendCommand('seekTo', [nextTime, true]);
+      sendCommand('getCurrentTime');
+    },
+    [duration, sendCommand]
+  );
+
+  const ytSendPlay = useCallback(
+    (video: Video) => {
+      playRetryTimersRef.current.forEach((t) => window.clearTimeout(t));
+      playRetryTimersRef.current = [];
+      const perform = () => {
+        sendCommand('loadVideoById', [video.id]);
+        sendCommand('playVideo');
+        sendCommand('unMute');
+        sendCommand('setVolume', [100]);
+        sendCommand('getDuration');
+        sendCommand('getCurrentTime');
+      };
+
+      // Chỉ gọi 1 lần duy nhất để tránh bị ngắt nhạc (vấp)
+      perform();
+      [180, 500, 1000, 1800].forEach((delay) => {
+        const timer = window.setTimeout(perform, delay);
+        playRetryTimersRef.current.push(timer);
+      });
+      const watchdog = window.setTimeout(() => {
+        sendCommand('getDuration');
+        sendCommand('getCurrentTime');
+        sendCommand('playVideo');
+        sendCommand('unMute');
+      }, 4000);
+      playRetryTimersRef.current.push(watchdog);
+    },
+    [sendCommand]
+  );
+
+  const playVideo = useCallback(
+    (video: Video, list?: Video[]) => {
+      if (list) playlistRef.current = list;
+      pendingPlayRef.current = video;
+      setCurrentVideo(video);
+      setCurrentTime(0);
+      setDuration(0);
+      setTubeConnecting(true);
+      setIsPlaying(false);
+      if (activeTab === 'tube') setTubeExpanded(true);
+      ytSendPlay(video);
+      if (ytListeningRef.current) {
+        pendingPlayRef.current = null;
+        return;
+      }
+      // Nếu chưa listening (lần đầu), nó sẽ tự chạy qua onLoad của iframe
+    },
+    [ytSendPlay, activeTab]
+  );
+
+  const playNext = useCallback(() => {
+    const pl = playlistRef.current;
+    setCurrentVideo(cv => {
+      if (!cv || pl.length === 0) return cv;
+      const idx = pl.findIndex(v => v.id === cv.id);
+      const next = pl[(idx + 1) % pl.length];
+      setTimeout(() => playVideo(next), 0);
+      return cv;
+    });
+  }, [playVideo]);
+
+  const playPrev = useCallback(() => {
+    const pl = playlistRef.current;
+    setCurrentVideo(cv => {
+      if (!cv || pl.length === 0) return cv;
+      const idx = pl.findIndex(v => v.id === cv.id);
+      const prev = pl[(idx - 1 + pl.length) % pl.length];
+      setTimeout(() => playVideo(prev), 0);
+      return cv;
+    });
+  }, [playVideo]);
+
+  useEffect(() => {
+    playNextRef.current = playNext;
+    playPrevRef.current = playPrev;
+  }, [playNext, playPrev]);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('vteen_user');
@@ -173,57 +262,11 @@ function App() {
       playRetryTimersRef.current.forEach((t) => window.clearTimeout(t));
       playRetryTimersRef.current = [];
     };
-  }, []);
+  }, [stopProgressLoop]);
 
-  const ytSendPlay = useCallback(
-    (video: Video) => {
-      playRetryTimersRef.current.forEach((t) => window.clearTimeout(t));
-      playRetryTimersRef.current = [];
-      const perform = () => {
-        sendCommand('loadVideoById', [video.id]);
-        sendCommand('playVideo');
-        sendCommand('unMute');
-        sendCommand('setVolume', [100]);
-        sendCommand('getDuration');
-        sendCommand('getCurrentTime');
-      };
-
-      // Chỉ gọi 1 lần duy nhất để tránh bị ngắt nhạc (vấp)
-      perform();
-      [180, 500, 1000, 1800].forEach((delay) => {
-        const timer = window.setTimeout(perform, delay);
-        playRetryTimersRef.current.push(timer);
-      });
-      const watchdog = window.setTimeout(() => {
-        sendCommand('getDuration');
-        sendCommand('getCurrentTime');
-        sendCommand('playVideo');
-        sendCommand('unMute');
-      }, 4000);
-      playRetryTimersRef.current.push(watchdog);
-    },
-    [sendCommand]
-  );
-
-  const playVideo = useCallback(
-    (video: Video, list?: Video[]) => {
-      if (list) playlistRef.current = list;
-      pendingPlayRef.current = video;
-      setCurrentVideo(video);
-      setCurrentTime(0);
-      setDuration(0);
-      setTubeConnecting(true);
-      setIsPlaying(false);
-      if (activeTab === 'tube') setTubeExpanded(true);
-      ytSendPlay(video);
-      if (ytListeningRef.current) {
-        pendingPlayRef.current = null;
-        return;
-      }
-      // Nếu chưa listening (lần đầu), nó sẽ tự chạy qua onLoad của iframe
-    },
-    [ytSendPlay, activeTab]
-  );
+  useEffect(() => {
+    ytSendPlayRef.current = ytSendPlay;
+  }, [ytSendPlay]);
 
   useEffect(() => {
     if (!currentVideo) {
@@ -258,44 +301,6 @@ function App() {
       setIsPlaying(true);
     }
   }, [isPlaying, sendCommand]);
-
-  const handleSeek = useCallback(
-    (seconds: number) => {
-      if (!Number.isFinite(seconds)) return;
-      const nextTime = Math.max(0, duration > 0 ? Math.min(seconds, duration) : seconds);
-      setCurrentTime(nextTime);
-      sendCommand('seekTo', [nextTime, true]);
-      sendCommand('getCurrentTime');
-    },
-    [duration, sendCommand]
-  );
-
-  const playNext = useCallback(() => {
-    const pl = playlistRef.current;
-    setCurrentVideo(cv => {
-      if (!cv || pl.length === 0) return cv;
-      const idx = pl.findIndex(v => v.id === cv.id);
-      const next = pl[(idx + 1) % pl.length];
-      setTimeout(() => playVideo(next), 0);
-      return cv;
-    });
-  }, [playVideo]);
-
-  const playPrev = useCallback(() => {
-    const pl = playlistRef.current;
-    setCurrentVideo(cv => {
-      if (!cv || pl.length === 0) return cv;
-      const idx = pl.findIndex(v => v.id === cv.id);
-      const prev = pl[(idx - 1 + pl.length) % pl.length];
-      setTimeout(() => playVideo(prev), 0);
-      return cv;
-    });
-  }, [playVideo]);
-
-  useEffect(() => {
-    playNextRef.current = playNext;
-    playPrevRef.current = playPrev;
-  }, [playNext, playPrev]);
 
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentVideo) return;
@@ -549,11 +554,15 @@ function App() {
               className="w-full h-full"
               onLoad={() => {
                 ytListeningRef.current = false;
-                const pending = pendingPlayRef.current;
-                if (pending) {
-                  pendingPlayRef.current = null;
-                  ytSendPlayRef.current(pending);
-                }
+                const gen = ++iframeLoadGenRef.current;
+                window.setTimeout(() => {
+                  if (gen !== iframeLoadGenRef.current) return;
+                  const pending = pendingPlayRef.current;
+                  if (pending) {
+                    pendingPlayRef.current = null;
+                    ytSendPlayRef.current(pending);
+                  }
+                }, 800);
               }}
             />
           </div>
