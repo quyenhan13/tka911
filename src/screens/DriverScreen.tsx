@@ -210,7 +210,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       const savedUser = localStorage.getItem('vteen_user');
       const apiToken = JSON.parse(savedUser || '{}')?.api_token;
       await fetch(`${CONFIG.API_BASE_URL}/driver_list.php?delete_file=${fileId}&from_account=${account}&api_token=${apiToken}`);
-      fetchFiles(forceRefresh);
+      fetchFiles(true);
     } catch (err) {
       console.error('Delete error:', err);
     } finally {
@@ -228,6 +228,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
         setFiles(cache.files);
         setAccounts(unique(['all', ...cache.accounts]));
         if (cache.quota) setQuota(cache.quota);
+        setLoading(false);
       }
 
       const savedUser = localStorage.getItem('vteen_user');
@@ -250,6 +251,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
         setFiles(nextFiles);
         setAccounts(nextAccounts);
         if (nextQuota) setQuota(nextQuota);
+        setLoading(false);
         writeDriveCache(activeAccount, query, {
           files: nextFiles,
           accounts: nextAccounts,
@@ -315,7 +317,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
 
       const result = await response.json();
       if (result.status === 'success') {
-        fetchFiles();
+        fetchFiles(true);
       } else {
         alert(result.message || 'Tải lên thất bại');
       }
@@ -356,7 +358,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
     event?.preventDefault();
     const nextQuery = searchQuery.trim();
     if (nextQuery === submittedQuery) {
-      fetchFiles();
+      fetchFiles(forceRefresh);
     } else {
       setSubmittedQuery(nextQuery);
     }
@@ -367,7 +369,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
     if (submittedQuery) {
       setSubmittedQuery('');
     } else {
-      fetchFiles();
+      fetchFiles(false);
     }
   };
 
@@ -456,7 +458,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
                     method: 'POST',
                     body: formData
                   });
-                  fetchFiles();
+                  fetchFiles(true);
                 } catch (err) {
                   console.error('Upload token error:', err);
                 } finally {
@@ -504,7 +506,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
             )}
             <button
               type="button"
-              onClick={() => submitSearch()}
+              onClick={() => submitSearch(undefined, true)}
               className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:bg-primary/20 hover:text-primary transition-all active:scale-90"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}>
