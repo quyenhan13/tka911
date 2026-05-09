@@ -44,7 +44,8 @@ function App() {
   const pendingPlayRef = useRef<Video | null>(null);
   const playRetryTimersRef = useRef<number[]>([]);
   const ytSendPlayRef = useRef<(video: Video) => void>(() => {});
-  const iframeLoadGenRef = useRef(0);
+  const playNextRef = useRef<(() => void) | undefined>(undefined);
+  const playPrevRef = useRef<(() => void) | undefined>(undefined);
 
   const bootVideoId = 'jfKfPfyJRdk';
   
@@ -66,6 +67,13 @@ function App() {
       // Lệnh trực tiếp cho Proxy yt_player.php
       iframeRef.current.contentWindow.postMessage({ func, args: args || [] }, '*');
     } catch (e) {}
+  }, []);
+
+  const stopProgressLoop = useCallback(() => {
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+      progressInterval.current = null;
+    }
   }, []);
 
   useEffect(() => {
@@ -167,8 +175,6 @@ function App() {
     };
   }, []);
 
-  const playNextRef = useRef<(() => void) | undefined>(undefined);
-
   const ytSendPlay = useCallback(
     (video: Video) => {
       playRetryTimersRef.current.forEach((t) => window.clearTimeout(t));
@@ -253,6 +259,17 @@ function App() {
     }
   }, [isPlaying, sendCommand]);
 
+  const handleSeek = useCallback(
+    (seconds: number) => {
+      if (!Number.isFinite(seconds)) return;
+      const nextTime = Math.max(0, duration > 0 ? Math.min(seconds, duration) : seconds);
+      setCurrentTime(nextTime);
+      sendCommand('seekTo', [nextTime, true]);
+      sendCommand('getCurrentTime');
+    },
+    [duration, sendCommand]
+  );
+
   const playNext = useCallback(() => {
     const pl = playlistRef.current;
     setCurrentVideo(cv => {
@@ -274,6 +291,11 @@ function App() {
       return cv;
     });
   }, [playVideo]);
+
+  useEffect(() => {
+    playNextRef.current = playNext;
+    playPrevRef.current = playPrev;
+  }, [playNext, playPrev]);
 
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentVideo) return;
