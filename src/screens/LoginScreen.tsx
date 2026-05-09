@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import Logo from '../components/Logo';
 import { CONFIG } from '../config';
 
 interface LoginScreenProps {
@@ -49,10 +50,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-center mb-12"
+          className="text-center mb-12 flex justify-center"
         >
-          <h1 className="text-6xl font-black bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 tracking-tighter mb-2">VTEEN</h1>
-          <p className="text-primary text-[10px] font-bold uppercase tracking-[0.3em] opacity-80">Premium Private Hub</p>
+          <Logo size="xl" layout="vertical" />
         </motion.header>
 
         <motion.div 

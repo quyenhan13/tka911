@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import Avatar from '../components/Avatar';
+import Logo from '../components/Logo';
 import MovieCard from '../components/MovieCard';
 import { getHistory } from '../storage/watchHistory';
 import { CONFIG } from '../config';
@@ -113,10 +114,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
       >
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-[0.32em] text-white/30">Premium Hub</p>
-            <h1 className="mt-1 text-2xl font-black tracking-[0.14em] text-white">
-              VTEEN<span className="text-primary">.SHOP</span>
-            </h1>
+            <Logo size="sm" />
           </div>
           <div className="flex items-center gap-3">
             <button

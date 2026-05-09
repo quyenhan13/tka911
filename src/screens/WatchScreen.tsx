@@ -66,13 +66,12 @@ const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
     
     if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) {
       const params = new URLSearchParams({
+        id: id,
         autoplay: '1',
-        playsinline: '1',
-        controls: '1',
-        rel: '0',
-        modestbranding: '1'
+        origin: window.location.origin
       });
-      return `https://www.youtube.com/embed/${id}?${params.toString()}`;
+      // Sử dụng proxy yt_player.php trên server để tránh lỗi 150/153 trên app
+      return `${CONFIG.SITE_BASE_URL}/yt_player.php?${params.toString()}`;
     }
   }
 
@@ -548,7 +547,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
                 className="absolute inset-0 w-full h-full border-0 bg-black"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                 allowFullScreen
-                referrerPolicy="no-referrer-when-downgrade"
+                referrerPolicy="strict-origin-when-cross-origin"
                 title="Player"
               />
             ) : null}
