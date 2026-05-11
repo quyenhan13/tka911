@@ -47,7 +47,6 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [history] = useState<HistoryItem[]>(() => getHistory());
   const [loading, setLoading] = useState(false);
-  const [, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('Tất cả');
   const [categories, setCategories] = useState<string[]>(['Tất cả', 'Phim bộ', 'Phim lẻ']);
@@ -60,7 +59,6 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
 
   const fetchMovies = useCallback(async (pageNum: number) => {
     setLoading(true);
-    setError(null);
 
     try {
       // Thêm nocache=1 để ép server dọn dẹp cache cũ bị lỗi localhost
@@ -76,12 +74,9 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
           setCategories(['Tất cả', ...result.categories]);
         }
         if (pageNum === 1) scrollContentTop();
-      } else {
-        setError(result.message || 'Không tải được danh sách phim');
       }
     } catch (err) {
       console.error('Fetch movies error:', err);
-      setError('Kết nối máy chủ thất bại');
     } finally {
       setLoading(false);
     }
