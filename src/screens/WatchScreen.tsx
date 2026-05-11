@@ -592,68 +592,6 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
       {/* Video Player Area */}
       <div className="relative z-50 h-[32vh] min-h-[240px] max-h-[58vh] w-full shrink-0 bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
-        {currentEp && (webPlayer.videoSrc || webPlayer.html || webPlayer.src || currentEmbedSrc || playerLoading || playerError) ? (
-          <>
-            {webPlayer.videoSrc ? (
-              <video
-                key={`${currentEp.episode}-${activeServer}-${webPlayer.videoSrc}`}
-                src={webPlayer.videoSrc}
-                className="absolute inset-0 h-full w-full bg-black"
-                controls
-                autoPlay
-                playsInline
-                preload="auto"
-              />
-            ) : webPlayer.src ? (
-              <iframe 
-                key={`${currentEp.episode}-${activeServer}-${webPlayer.src}`}
-                src={webPlayer.src}
-                className="absolute inset-0 w-full h-full border-0"
-                style={{ backgroundColor: 'black !important', zIndex: 1 }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
-                title="Player"
-              />
-            ) : webPlayer.html ? (
-              <iframe 
-                key={`${currentEp.episode}-${activeServer}-${webServers[String(activeServer)] || 'web'}`}
-                srcDoc={webPlayer.html}
-                className="absolute inset-0 w-full h-full border-0"
-                style={{ backgroundColor: 'black !important', zIndex: 1 }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
-                title="Player"
-              />
-            ) : currentEmbedSrc && !playerLoading ? (
-              <iframe 
-                key={`${currentEp.episode}-${activeServer}-api`}
-                src={currentEmbedSrc.startsWith('<!DOCTYPE') ? undefined : currentEmbedSrc}
-                srcDoc={currentEmbedSrc.startsWith('<!DOCTYPE') ? currentEmbedSrc : undefined}
-                className="absolute inset-0 w-full h-full border-0"
-                style={{ backgroundColor: 'black !important', zIndex: 1 }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
-                title="Player"
-              />
-            ) : null}
-
-            {(playerLoading || playerError) && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#05070a] px-6 text-center">
-                {playerLoading ? (
-                  <div className="h-9 w-9 rounded-full border-3 border-primary/25 border-t-primary animate-spin" />
-                ) : (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-9 w-9 text-primary">
-                    <path d="M12 9v4M12 17h.01M10.3 4.3L2.8 17.2A2 2 0 004.5 20h15a2 2 0 001.7-2.8L13.7 4.3a2 2 0 00-3.4 0z" />
-                  </svg>
-                )}
-                <span className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
-                  {playerLoading ? 'Dang lay player VTEEN...' : playerError}
-                </span>
-              </div>
-            )}
           </>
         ) : (
           <div className="flex flex-col items-center gap-2">
