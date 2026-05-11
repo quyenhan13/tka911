@@ -58,11 +58,26 @@ const getYouTubeId = (value: string) => {
   return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
 };
 
-const buildYouTubeEmbedUrl = (id: string) => {
-  // Dùng origin thực của trang đang chạy để YouTube không chặn lỗi 153
-  const origin = typeof window !== 'undefined' ? window.location.origin : CONFIG.SITE_BASE_URL;
-  return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&origin=${encodeURIComponent(origin)}&widget_referrer=${encodeURIComponent(origin)}`;
-};
+const buildYouTubeEmbedUrl = (id: string) =>
+  `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&origin=${encodeURIComponent(CONFIG.SITE_BASE_URL)}&widget_referrer=${encodeURIComponent(CONFIG.SITE_BASE_URL)}`;
+
+// Fix lỗi 153: Bọc YouTube vào srcDoc HTML có base vteen.shop
+// → Capacitor WebView sẽ phát đúng mà không bị YouTube chặn
+const buildYouTubeSrcDoc = (id: string) => `<!DOCTYPE html>
+<html>
+<head>
+  <base href="${CONFIG.SITE_BASE_URL}/">
+  <meta name="referrer" content="origin">
+  <style>*{margin:0;padding:0}html,body{width:100%;height:100%;background:#000;overflow:hidden}iframe{width:100%;height:100%;border:none}</style>
+</head>
+<body>
+  <iframe
+    src="https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+    allowfullscreen
+  ></iframe>
+</body>
+</html>`;
 
 const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
   const value = embedUrl?.trim();
@@ -437,7 +452,8 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         if (directSource.type === 'youtube') {
           const ytId = getYouTubeId(directSource.url);
           if (ytId) {
-            setWebPlayer({ html: null, src: buildYouTubeEmbedUrl(ytId), videoSrc: null });
+            // Dùng srcDoc thay vì src để tránh lỗi 153 trên Capacitor iOS
+            setWebPlayer({ html: buildYouTubeSrcDoc(ytId), src: null, videoSrc: null });
           } else {
             setWebPlayer({ html: null, src: directSource.url, videoSrc: null });
           }
