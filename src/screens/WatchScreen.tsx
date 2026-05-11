@@ -60,92 +60,6 @@ const buildYouTubeEmbedUrl = (id: string) =>
 
 
 
-const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
-  const value = embedUrl?.trim();
-  if (!value) return null;
-
-  // 1. Xử lý link YouTube để dùng qua proxy (cần thiết cho một số phim trên server 1)
-  const hasYTKeyword = value.includes('youtube.com') || value.includes('youtu.be') || value.includes('youtube-nocookie.com');
-  const isYTId = /^[a-zA-Z0-9_-]{11}$/.test(value);
-  const isYouTube = isYTId || hasYTKeyword || Boolean(host?.toLowerCase()?.includes('youtube'));
-
-  if (isYouTube) {
-    const youtubeId = getYouTubeId(value);
-    if (youtubeId) return buildYouTubeEmbedUrl(youtubeId);
-
-    let id = value;
-    try {
-      if (value.includes('v=')) {
-        id = new URL(value).searchParams.get('v') || value;
-      } else if (value.includes('embed/')) {
-        id = value.split('embed/')[1].split('?')[0];
-      } else if (value.includes('shorts/')) {
-        id = value.split('shorts/')[1].split('?')[0];
-      } else if (value.includes('youtu.be/')) {
-        id = value.split('youtu.be/')[1].split('?')[0];
-      }
-    } catch {
-      id = value;
-    }
-    
-    if (id && /^[a-zA-Z0-9_-]{11}$/.test(id)) {
-      // Trả về mã HTML trực tiếp để nhúng (srcDoc), tránh lỗi SAMEORIGIN và 153
-      return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center}</style>
-        </head>
-        <body>
-          <iframe 
-            width="100%" height="100%" 
-            src="https://www.youtube.com/embed/${id}?autoplay=1&mute=1&origin=https://vteen.shop&playsinline=1&rel=0&modestbranding=1" 
-            frameborder="0" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-            allowfullscreen>
-          </iframe>
-        </body>
-        </html>
-      `;
-    }
-  }
-
-  // 2. Xử lý các link khác, đảm bảo HTTPS và đúng root domain
-  const rawDriveId = /^[a-zA-Z0-9_-]{20,}$/.test(value) ? value : null;
-  const looksLikeDrive = Boolean(rawDriveId) || value.includes('drive.google.com') || value.includes('docs.google.com') || host?.toLowerCase()?.includes('drive');
-  if (looksLikeDrive) {
-    try {
-      const driveUrl = value.startsWith('http') ? new URL(value) : null;
-      const queryId = driveUrl?.searchParams.get('id');
-      const pathId = driveUrl?.pathname.match(/\/d\/([^/]+)/)?.[1];
-      const driveId = queryId || pathId || rawDriveId;
-      if (driveId) {
-        return `https://drive.google.com/file/d/${driveId}/preview`;
-      }
-    } catch {
-      const driveId = value.match(/\/d\/([^/]+)/)?.[1];
-      if (driveId) {
-        return `https://drive.google.com/file/d/${driveId}/preview`;
-      }
-    }
-  }
-
-  let src = value;
-  if (value.startsWith('//')) {
-    src = `https:${value}`;
-  } else if (!value.startsWith('http')) {
-    // Nếu là link tương đối (vd: embed.php...), nối với SITE_BASE_URL
-    src = new URL(value, `${CONFIG.SITE_BASE_URL}/`).toString();
-  }
-
-  // 3. Đảm bảo luôn dùng https và không dùng proxy cho video trên thiết bị thật
-  if (src.includes('vteen.shop')) {
-    src = src.replace('http://', 'https://');
-  }
-
-  return src;
-};
-
 const toText = (value: unknown) => (typeof value === 'string' || typeof value === 'number' ? String(value) : '');
 
 const normalizeEpisodes = (value: unknown): Episode[] => {
@@ -577,9 +491,9 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           SERVER VIP
         </button>
         <button 
-          disabled={playerLoading || (!webServers['2'] && !currentEp?.embed_url_2)}
+          disabled={playerLoading || !webServers['2']}
           onClick={() => setActiveServer(2)}
-          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${playerLoading || (!webServers['2'] && !currentEp?.embed_url_2) ? 'opacity-30 grayscale' : (activeServer === 2 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-card text-text-dim border border-white/5')}`}
+          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${playerLoading || !webServers['2'] ? 'opacity-30 grayscale' : (activeServer === 2 ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-card text-text-dim border border-white/5')}`}
         >
           SERVER 2
         </button>
