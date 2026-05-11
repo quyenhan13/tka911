@@ -45,57 +45,35 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // 🛡️ CHỈ CHẠY OTA TRÊN NATIVE (iOS/Android)
     const isNative = Capacitor.isNativePlatform();
 
     if (isNative) {
-      try {
-        CapacitorUpdater.notifyAppReady();
-      } catch (e) {
-        console.warn('🏮 notifyAppReady failed:', e);
-      }
+      try { CapacitorUpdater.notifyAppReady(); } catch {}
+
+      const initOTA = async () => {
+        try {
+          const res = await fetch('https://vteen.shop/api/update.php');
+          const info = await res.json();
+          if (info.status === 'success' && info.url) {
+            const last = localStorage.getItem('vteen_ota_version');
+            if (last !== info.version) {
+              const bundle = await CapacitorUpdater.download({ url: info.url, version: info.version });
+              localStorage.setItem('vteen_ota_version', info.version);
+              await CapacitorUpdater.set({ id: bundle.id });
+            }
+          }
+        } catch {}
+      };
+
+      setTimeout(initOTA, 5000);
     }
 
-    const initOTA = async () => {
-      if (!isNative) return;
-      
-      try {
-        const response = await fetch('https://vteen.shop/api/update.php');
-        const updateInfo = await response.json();
-        if (updateInfo.status === 'success' && updateInfo.url) {
-          const lastVersion = localStorage.getItem('vteen_ota_version');
-          if (lastVersion !== updateInfo.version) {
-            const update = await CapacitorUpdater.download({
-              url: updateInfo.url,
-              version: updateInfo.version
-            });
-            localStorage.setItem('vteen_ota_version', updateInfo.version);
-            await CapacitorUpdater.set({ id: update.id });
-          }
-        }
-      } catch (err) {
-        console.warn('🏮 OTA Check failed:', err);
-      }
-    };
-
-    // Delay OTA check để ưu tiên Splash & Main UI
-    const otaTimer = setTimeout(initOTA, 4000);
-
-    const splashTimer = setTimeout(() => {
-      setShowSplash(false);
-    }, 2400);
-
-    return () => {
-      clearTimeout(otaTimer);
-      clearTimeout(splashTimer);
-    };
+    const t = setTimeout(() => setShowSplash(false), 2400);
+    return () => clearTimeout(t);
   }, []);
 
   const handleLoginSuccess = (userData: unknown) => {
-    if (!isUser(userData)) {
-      localStorage.removeItem('vteen_user');
-      return;
-    }
+    if (!isUser(userData)) { localStorage.removeItem('vteen_user'); return; }
     setUser(userData);
     localStorage.setItem('vteen_user', JSON.stringify(userData));
   };
@@ -108,82 +86,42 @@ function App() {
   };
 
   return (
-    <div className="h-[100dvh] text-white relative overflow-hidden bg-[#05070a] font-sans">
+    <div className="h-[100dvh] text-white relative overflow-hidden bg-[#05070a]">
+      {/* UniverseBackground chỉ render 1 lần duy nhất - không duplicate trong Splash nữa */}
       <UniverseBackground />
 
       <AnimatePresence mode="wait">
         {showSplash && (
           <motion.div
-            key="splash-screen"
+            key="splash"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.65 }}
-            className="fixed inset-0 z-[2000] flex flex-col items-center justify-center overflow-hidden bg-[#05070a]"
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 z-[2000] flex items-center justify-center bg-[#05070a]"
           >
-            <UniverseBackground />
             <motion.div
-              initial={{ opacity: 0, scale: 0.82 }}
-              animate={{ opacity: 0.95, scale: 1 }}
-              transition={{ duration: 1.1, ease: 'easeOut' }}
-              className="absolute h-72 w-72 rounded-full border border-cyan-500/20 shadow-[0_0_80px_rgba(6,182,212,0.22),inset_0_0_70px_rgba(124,58,237,0.16)]"
-            />
-            <motion.div
-              initial={{ opacity: 0, rotate: 0, scale: 0.92 }}
-              animate={{ opacity: 1, rotate: 360, scale: 1 }}
-              transition={{ opacity: { duration: 0.7 }, rotate: { duration: 9, ease: 'linear', repeat: Infinity }, scale: { duration: 0.9 } }}
-              className="absolute h-56 w-56 rounded-full border border-dashed border-white/10"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="absolute h-36 w-36 rounded-full bg-cyan-500/10 blur-3xl"
-            />
-            
-            <motion.div
-              initial={{ scale: 0.78, opacity: 0, y: 18 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ duration: 0.75, ease: 'easeOut' }}
-              className="relative z-10 text-center"
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+              className="text-center"
             >
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.88 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ delay: 0.18, duration: 0.68, ease: 'easeOut' }}
-                className="mb-6"
-              >
-                <Logo size="xl" layout="vertical" />
-              </motion.div>
-              
-              <motion.div
-                initial={{ scaleX: 0, opacity: 0 }}
-                animate={{ scaleX: 1, opacity: 1 }}
-                transition={{ delay: 0.55, duration: 0.55 }}
-                className="mx-auto mb-4 h-[1px] w-32 bg-gradient-to-r from-transparent via-cyan-500 to-transparent"
-              />
-              
+              <Logo size="xl" layout="vertical" />
               <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.72, duration: 0.5 }}
-                className="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-500/80"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="mt-6 text-[10px] font-black uppercase tracking-[0.5em] text-cyan-500/70"
               >
                 By Chin
               </motion.p>
-              
-              <motion.div
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 100, opacity: 1 }}
-                transition={{ delay: 1.05, duration: 0.7, ease: 'easeOut' }}
-                className="mx-auto mt-8 h-1 overflow-hidden rounded-full bg-white/5"
-              >
+              <div className="mx-auto mt-6 h-0.5 w-24 overflow-hidden rounded-full bg-white/5">
                 <motion.div
                   initial={{ x: '-100%' }}
                   animate={{ x: '100%' }}
-                  transition={{ duration: 1.5, ease: 'easeInOut', repeat: Infinity }}
-                  className="h-full w-1/2 rounded-full bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.8)]"
+                  transition={{ duration: 1.2, ease: 'easeInOut', repeat: Infinity }}
+                  className="h-full w-1/2 rounded-full bg-cyan-500"
                 />
-              </motion.div>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -194,46 +132,44 @@ function App() {
           <LoginScreen onLoginSuccess={handleLoginSuccess} />
         ) : (
           <>
-          <AnimatePresence mode="wait">
-            {!watchingSlug && (
-              <motion.main
-                key={activeTab}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="h-full overflow-y-auto overscroll-none pb-32"
-              >
-                {activeTab === 'home' && <HomeScreen onWatch={(slug: string) => setWatchingSlug(slug)} />}
-                {activeTab === 'driver' && (
+            <AnimatePresence mode="wait">
+              {!watchingSlug && (
+                <motion.main
+                  key={activeTab}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="h-full overflow-y-auto overscroll-none pb-32"
+                >
+                  {activeTab === 'home' && <HomeScreen onWatch={(slug: string) => setWatchingSlug(slug)} />}
+                  {activeTab === 'driver' && (
+                    <ErrorBoundary><DriverScreen user={user} /></ErrorBoundary>
+                  )}
+                  {activeTab === 'profile' && (
+                    <ProfileScreen user={user} onLogout={handleLogout} onWatch={(slug: string) => setWatchingSlug(slug)} />
+                  )}
+                </motion.main>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {watchingSlug && (
+                <motion.div
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+                  className="fixed inset-0 z-[1000]"
+                >
                   <ErrorBoundary>
-                    <DriverScreen user={user} />
+                    <WatchScreen slug={watchingSlug} onBack={() => setWatchingSlug(null)} onUnauthorized={handleLogout} />
                   </ErrorBoundary>
-                )}
-                {activeTab === 'profile' && (
-                  <ProfileScreen user={user} onLogout={handleLogout} onWatch={(slug: string) => setWatchingSlug(slug)} />
-                )}
-              </motion.main>
-            )}
-          </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          <AnimatePresence>
-            {watchingSlug && (
-              <motion.div
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed inset-0 z-[1000]"
-              >
-                <ErrorBoundary>
-                  <WatchScreen slug={watchingSlug} onBack={() => setWatchingSlug(null)} onUnauthorized={handleLogout} />
-                </ErrorBoundary>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {!watchingSlug && <BottomTabs activeTab={activeTab} onTabChange={setActiveTab} />}
+            {!watchingSlug && <BottomTabs activeTab={activeTab} onTabChange={setActiveTab} />}
           </>
         )}
       </div>
