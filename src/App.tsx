@@ -48,12 +48,12 @@ function App() {
   const [watchingSlug, setWatchingSlug] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(() => getSavedUser());
   const [showSplash, setShowSplash] = useState(true);
-  const [updateProgress, setUpdateProgress] = useState(0);
+  const [updateProgress] = useState(0);
   const [updateStatus, setUpdateStatus] = useState('');
 
   // 🏮 BIẾN CHỐT CHẶN - Tránh nháy màn hình
-  const lastCheckTime = useRef<number>(0);
   const isChecking = useRef<boolean>(false);
+
 
   useEffect(() => {
     // 🏮 TIỂU CHIN ANTI-LOOP ENGINE PRO MAX
