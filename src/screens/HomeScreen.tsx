@@ -47,7 +47,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [history] = useState<HistoryItem[]>(() => getHistory());
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('Tất cả');
   const [categories, setCategories] = useState<string[]>(['Tất cả', 'Phim bộ', 'Phim lẻ']);
