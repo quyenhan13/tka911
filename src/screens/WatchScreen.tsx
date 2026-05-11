@@ -395,18 +395,26 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       const savedUser = localStorage.getItem('vteen_user');
       const apiToken = savedUser ? JSON.parse(savedUser)?.api_token : null;
 
-      // 🏮 SỬ DỤNG WATCH API (JSON) - KHÔNG PARSE HTML
+      // 🏮 SỬ DỤNG WATCH API (JSON) - Tự chọn transport theo môi trường
       const url = `${CONFIG.API_BASE_URL}/watch_api.php?slug=${encodeURIComponent(slug)}&ep=${currentEp.episode}&api_token=${encodeURIComponent(apiToken)}`;
       
-      const response = await CapacitorHttp.get({ url });
-      
-      if (response.status !== 200 || !response.data || response.data.status !== 'success') {
-        throw new Error(response.data?.message || 'Không thể lấy dữ liệu máy chủ');
+      let data: Record<string, unknown>;
+      if (Capacitor.isNativePlatform()) {
+        const response = await CapacitorHttp.get({ url });
+        if (response.status !== 200 || !response.data || response.data.status !== 'success') {
+          throw new Error(response.data?.message || 'Không thể lấy dữ liệu máy chủ');
+        }
+        data = response.data;
+      } else {
+        // Trên web/local: dùng fetch thường
+        const response = await fetch(url, { credentials: 'include' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        data = await response.json();
+        if (data.status !== 'success') throw new Error((data.message as string) || 'Không thể lấy dữ liệu máy chủ');
       }
 
-      const data = response.data;
-      const servers = data.servers || {};
-      const sources = data.sources || {};
+      const servers = (data.servers as Record<string, string>) || {};
+      const sources = (data.sources as Record<string, { type: string; url: string }>) || {};
 
       if (checkCancelled()) return;
       setWebServers(servers);
