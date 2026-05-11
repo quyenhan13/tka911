@@ -58,8 +58,11 @@ const getYouTubeId = (value: string) => {
   return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
 };
 
-const buildYouTubeEmbedUrl = (id: string) =>
-  `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&origin=${encodeURIComponent(CONFIG.SITE_BASE_URL)}&widget_referrer=${encodeURIComponent(CONFIG.SITE_BASE_URL)}`;
+const buildYouTubeEmbedUrl = (id: string) => {
+  // Dùng origin thực của trang đang chạy để YouTube không chặn lỗi 153
+  const origin = typeof window !== 'undefined' ? window.location.origin : CONFIG.SITE_BASE_URL;
+  return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&origin=${encodeURIComponent(origin)}&widget_referrer=${encodeURIComponent(origin)}`;
+};
 
 const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
   const value = embedUrl?.trim();
