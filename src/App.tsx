@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { CapacitorUpdater } from '@capgo/capacitor-updater'
+import { App as CapApp } from '@capacitor/app'
 
 import BottomTabs from './components/BottomTabs'
 import HomeScreen from './screens/HomeScreen'
@@ -27,14 +29,12 @@ const isUser = (value: unknown): value is User => {
 const getSavedUser = () => {
   const savedUser = localStorage.getItem('vteen_user');
   if (!savedUser) return null;
-
   try {
     const parsed = JSON.parse(savedUser);
     if (isUser(parsed)) return parsed;
   } catch {
     localStorage.removeItem('vteen_user');
   }
-
   return null;
 };
 
@@ -45,14 +45,44 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // 🏮 EMERGENCY: TẮT TOÀN BỘ OTA ĐỂ CỨU APP KHỎI LOOP
-    console.log('🏮 OTA: EMERGENCY DISABLE. Entering App...');
-    
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 1000);
+    // 🏮 THÔNG BÁO APP ĐÃ SẴN SÀNG (CHỐNG LOOP)
+    CapacitorUpdater.notifyAppReady();
 
-    return () => clearTimeout(timer);
+    const initOTA = async () => {
+      try {
+        console.log('🏮 OTA: Checking for stable updates...');
+        // Kiểm tra phiên bản mới nhất từ Github Release (qua Capgo/update.php)
+        const update = await CapacitorUpdater.download({
+          url: 'https://vteen.shop/api/update.php' // Endpoint điều hướng OTA
+        });
+
+        if (update.version) {
+          console.log('🏮 OTA: Found new version:', update.version);
+          
+          // Lưu vết phiên bản để tránh update đè liên tục
+          const lastVersion = localStorage.getItem('vteen_ota_version');
+          if (lastVersion !== update.version) {
+            console.log('🏮 OTA: Applying update and rebooting...');
+            localStorage.setItem('vteen_ota_version', update.version);
+            await CapacitorUpdater.set({ id: update.id });
+          }
+        }
+      } catch (err) {
+        console.warn('🏮 OTA Check failed (Normal if offline):', err);
+      }
+    };
+
+    // Chạy OTA sau khi Splash đã hiện xong để ko bị lag
+    const otaTimer = setTimeout(initOTA, 3000);
+
+    const splashTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1500);
+
+    return () => {
+      clearTimeout(otaTimer);
+      clearTimeout(splashTimer);
+    };
   }, []);
 
   const handleLoginSuccess = (userData: unknown) => {
@@ -111,53 +141,28 @@ function App() {
             <motion.div
               key="splash"
               initial={{ opacity: 1 }}
-              exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
+              exit={{ opacity: 0, scale: 1.05, filter: 'blur(10px)' }}
+              transition={{ duration: 0.6 }}
               className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black"
             >
-              <div className="relative">
-                <motion.div
-                  animate={{ 
-                    scale: [1, 1.05, 1],
-                    rotate: [0, 1, 0, -1, 0]
-                  }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                >
-                  <Logo size="xl" layout="vertical" />
-                </motion.div>
-                
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 1.5, ease: "easeInOut" }}
-                  className="absolute -bottom-10 left-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_rgba(34,211,238,0.8)]"
-                />
-              </div>
-
-              <div className="mt-20 flex flex-col items-center gap-4">
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="text-cyan-400 font-bold tracking-[0.2em] text-sm uppercase"
-                >
-                  Premium Private Hub
-                </motion.div>
-                
-                <div className="flex gap-1.5">
+              <motion.div
+                animate={{ scale: [1, 1.02, 1] }}
+                transition={{ duration: 3, repeat: Infinity }}
+              >
+                <Logo size="xl" layout="vertical" />
+              </motion.div>
+              
+              <div className="mt-16 flex flex-col items-center gap-4">
+                <div className="text-cyan-400/60 font-bold tracking-[0.3em] text-[10px] uppercase">
+                  Initializing Premium Hub
+                </div>
+                <div className="flex gap-2">
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      animate={{ 
-                        scale: [1, 1.5, 1],
-                        opacity: [0.3, 1, 0.3]
-                      }}
-                      transition={{ 
-                        duration: 1.2, 
-                        repeat: Infinity, 
-                        delay: i * 0.2 
-                      }}
-                      className="w-1.5 h-1.5 rounded-full bg-cyan-500"
+                      animate={{ opacity: [0.2, 1, 0.2] }}
+                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                      className="w-1 h-1 rounded-full bg-cyan-500"
                     />
                   ))}
                 </div>
