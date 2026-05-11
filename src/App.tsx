@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Capacitor } from '@capacitor/core'
 import { CapacitorUpdater } from '@capgo/capacitor-updater'
 
 import BottomTabs from './components/BottomTabs'
@@ -44,10 +45,20 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // 🏮 THÔNG BÁO APP ĐÃ SẴN SÀNG (CHỐNG LOOP)
-    CapacitorUpdater.notifyAppReady();
+    // 🛡️ CHỈ CHẠY OTA TRÊN NATIVE (iOS/Android)
+    const isNative = Capacitor.isNativePlatform();
+
+    if (isNative) {
+      try {
+        CapacitorUpdater.notifyAppReady();
+      } catch (e) {
+        console.warn('🏮 notifyAppReady failed:', e);
+      }
+    }
 
     const initOTA = async () => {
+      if (!isNative) return;
+      
       try {
         const response = await fetch('https://vteen.shop/api/update.php');
         const updateInfo = await response.json();
@@ -67,12 +78,17 @@ function App() {
       }
     };
 
-    setTimeout(initOTA, 5000); // Check OTA sau 5s để ko lag splash
+    // Delay OTA check để ưu tiên Splash & Main UI
+    const otaTimer = setTimeout(initOTA, 4000);
 
-    const timer = setTimeout(() => {
+    const splashTimer = setTimeout(() => {
       setShowSplash(false);
     }, 2400);
-    return () => clearTimeout(timer);
+
+    return () => {
+      clearTimeout(otaTimer);
+      clearTimeout(splashTimer);
+    };
   }, []);
 
   const handleLoginSuccess = (userData: unknown) => {
@@ -92,12 +108,13 @@ function App() {
   };
 
   return (
-    <div className="h-[100dvh] text-white relative overflow-hidden bg-transparent font-sans">
+    <div className="h-[100dvh] text-white relative overflow-hidden bg-[#05070a] font-sans">
       <UniverseBackground />
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {showSplash && (
           <motion.div
+            key="splash-screen"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.65 }}
@@ -108,20 +125,21 @@ function App() {
               initial={{ opacity: 0, scale: 0.82 }}
               animate={{ opacity: 0.95, scale: 1 }}
               transition={{ duration: 1.1, ease: 'easeOut' }}
-              className="absolute h-72 w-72 rounded-full border border-primary/18 shadow-[0_0_80px_rgba(6,182,212,0.22),inset_0_0_70px_rgba(124,58,237,0.16)]"
+              className="absolute h-72 w-72 rounded-full border border-cyan-500/20 shadow-[0_0_80px_rgba(6,182,212,0.22),inset_0_0_70px_rgba(124,58,237,0.16)]"
             />
             <motion.div
               initial={{ opacity: 0, rotate: 0, scale: 0.92 }}
               animate={{ opacity: 1, rotate: 360, scale: 1 }}
               transition={{ opacity: { duration: 0.7 }, rotate: { duration: 9, ease: 'linear', repeat: Infinity }, scale: { duration: 0.9 } }}
-              className="absolute h-56 w-56 rounded-full border border-dashed border-white/12"
+              className="absolute h-56 w-56 rounded-full border border-dashed border-white/10"
             />
             <motion.div
               initial={{ opacity: 0, y: 24, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="absolute h-36 w-36 rounded-full bg-primary/18 blur-3xl"
+              className="absolute h-36 w-36 rounded-full bg-cyan-500/10 blur-3xl"
             />
+            
             <motion.div
               initial={{ scale: 0.78, opacity: 0, y: 18 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -132,35 +150,38 @@ function App() {
                 initial={{ opacity: 0, y: 10, scale: 0.88 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ delay: 0.18, duration: 0.68, ease: 'easeOut' }}
-                className="mb-4 drop-shadow-[0_0_34px_rgba(6,182,212,0.34)]"
+                className="mb-6"
               >
                 <Logo size="xl" layout="vertical" />
               </motion.div>
+              
               <motion.div
                 initial={{ scaleX: 0, opacity: 0 }}
                 animate={{ scaleX: 1, opacity: 1 }}
                 transition={{ delay: 0.55, duration: 0.55 }}
-                className="mx-auto mb-4 h-px w-36 origin-center bg-linear-to-r from-transparent via-primary to-transparent"
+                className="mx-auto mb-4 h-[1px] w-32 bg-gradient-to-r from-transparent via-cyan-500 to-transparent"
               />
+              
               <motion.p
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.72, duration: 0.5 }}
-                className="text-xs font-black uppercase tracking-[0.55em] text-primary/90"
+                className="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-500/80"
               >
                 By Chin
               </motion.p>
+              
               <motion.div
                 initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 112, opacity: 1 }}
+                animate={{ width: 100, opacity: 1 }}
                 transition={{ delay: 1.05, duration: 0.7, ease: 'easeOut' }}
-                className="mx-auto mt-8 h-1 overflow-hidden rounded-full bg-white/10"
+                className="mx-auto mt-8 h-1 overflow-hidden rounded-full bg-white/5"
               >
                 <motion.div
                   initial={{ x: '-100%' }}
                   animate={{ x: '100%' }}
-                  transition={{ duration: 1.1, ease: 'easeInOut', repeat: Infinity }}
-                  className="h-full w-1/2 rounded-full bg-primary shadow-[0_0_18px_rgba(6,182,212,0.85)]"
+                  transition={{ duration: 1.5, ease: 'easeInOut', repeat: Infinity }}
+                  className="h-full w-1/2 rounded-full bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.8)]"
                 />
               </motion.div>
             </motion.div>
@@ -184,7 +205,11 @@ function App() {
                 className="h-full overflow-y-auto overscroll-none pb-32"
               >
                 {activeTab === 'home' && <HomeScreen onWatch={(slug: string) => setWatchingSlug(slug)} />}
-                {activeTab === 'driver' && <DriverScreen user={user} />}
+                {activeTab === 'driver' && (
+                  <ErrorBoundary>
+                    <DriverScreen user={user} />
+                  </ErrorBoundary>
+                )}
                 {activeTab === 'profile' && (
                   <ProfileScreen user={user} onLogout={handleLogout} onWatch={(slug: string) => setWatchingSlug(slug)} />
                 )}
@@ -202,7 +227,7 @@ function App() {
                 className="fixed inset-0 z-[1000]"
               >
                 <ErrorBoundary>
-                  <WatchScreen slug={watchingSlug} onBack={() => setWatchingSlug(null)} />
+                  <WatchScreen slug={watchingSlug} onBack={() => setWatchingSlug(null)} onUnauthorized={handleLogout} />
                 </ErrorBoundary>
               </motion.div>
             )}
