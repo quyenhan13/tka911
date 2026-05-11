@@ -592,7 +592,60 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
 
       {/* Video Player Area */}
       <div className="relative z-50 h-[32vh] min-h-[240px] max-h-[58vh] w-full shrink-0 bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
-          </>
+        {playerLoading ? (
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-[10px] text-primary/60 font-medium uppercase tracking-tighter">Đang kết nối server...</p>
+          </div>
+        ) : playerError ? (
+          <div className="p-6 text-center">
+            <p className="text-xs text-red-500 mb-4">{playerError}</p>
+            <button onClick={() => loadWebPlayer()} className="text-[10px] font-bold text-white bg-white/10 px-4 py-2 rounded-full active:scale-95 transition-all">THỬ LẠI</button>
+          </div>
+        ) : webPlayer.videoSrc ? (
+          <div className="w-full h-full bg-black">
+            <video 
+              src={webPlayer.videoSrc} 
+              className="w-full h-full" 
+              controls 
+              autoPlay 
+              playsInline
+            />
+          </div>
+        ) : webPlayer.src ? (
+          <iframe 
+            key={`${currentEp?.episode}-${activeServer}-${webPlayer.src}`}
+            src={webPlayer.src}
+            className="absolute inset-0 w-full h-full border-0"
+            style={{ backgroundColor: 'black', zIndex: 1 }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            title="Player"
+          />
+        ) : webPlayer.html ? (
+          <iframe 
+            key={`${currentEp?.episode}-${activeServer}-html`}
+            srcDoc={webPlayer.html}
+            className="absolute inset-0 w-full h-full border-0"
+            style={{ backgroundColor: 'black', zIndex: 1 }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            title="Player"
+          />
+        ) : currentEmbedSrc ? (
+          <iframe 
+            key={`${currentEp?.episode}-${activeServer}-api`}
+            src={currentEmbedSrc.startsWith('<!DOCTYPE') ? undefined : currentEmbedSrc}
+            srcDoc={currentEmbedSrc.startsWith('<!DOCTYPE') ? currentEmbedSrc : undefined}
+            className="absolute inset-0 w-full h-full border-0"
+            style={{ backgroundColor: 'black', zIndex: 1 }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            title="Player"
+          />
         ) : (
           <div className="flex flex-col items-center gap-2">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -600,6 +653,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           </div>
         )}
       </div>
+
 
       {/* Server Selector Buttons */}
       <div className="relative z-10 shrink-0 px-6 py-4 flex gap-3 border-b border-white/5 bg-[#05070a]/20 backdrop-blur-sm">
