@@ -58,55 +58,56 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 # JOB 2: Tự động build file IPA (ĐÃ TẮT ĐỂ TIẾT KIỆM)
-#  build-ipa:
-#    needs: ota-release
-#    runs-on: macos-15
-#    permissions:
-#      contents: write
-#    steps:
-#      - name: Checkout code
-#        uses: actions/checkout@v4
-#
-#      - name: Setup Node.js
-#        uses: actions/setup-node@v4
-#        with:
-#          node-version: 22
-#          cache: npm
-#
-#      - name: Install dependencies
-#        run: npm ci
-#
-#      - name: Build web shell
-#        run: npm run build
-#
-#      - name: Sync Capacitor iOS
-#        run: npx cap sync ios
-#
-#      - name: Build unsigned iOS app
-#        run: |
-#          xcodebuild clean build \
-#            -project ios/App/App.xcodeproj \
-#            -scheme App \
-#            -configuration Release \
-#            -derivedDataPath ios/App/build \
-#            CODE_SIGNING_ALLOWED=NO \
-#            CODE_SIGNING_REQUIRED=NO \
-#            CODE_SIGN_IDENTITY="" \
-#            PRODUCT_BUNDLE_IDENTIFIER=vn.shop.vteen.app
-#
-#      - name: Package TrollStore IPA
-#        run: |
-#          APP_PATH=$(find ios/App/build -type d -name "*.app" | head -n 1)
-#          if [ -z "$APP_PATH" ]; then exit 1; fi
-#          rm -rf Payload && mkdir -p Payload
-#          cp -R "$APP_PATH" Payload/VTeen.app
-#          zip -r VTeen-TrollStore.ipa Payload
-#
-#      - name: Upload IPA to Release
-#        uses: softprops/action-gh-release@v2
-#        with:
-#          tag_name: ${{ needs.ota-release.outputs.new_tag }}
-#          files: VTeen-TrollStore.ipa
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build-ipa:
+    needs: ota-release
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web shell
+        run: npm run build
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Build unsigned iOS app
+        run: |
+          xcodebuild clean build \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -derivedDataPath ios/App/build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PRODUCT_BUNDLE_IDENTIFIER=vn.shop.vteen.app
+
+      - name: Package TrollStore IPA
+        run: |
+          APP_PATH=$(find ios/App/build -type d -name "*.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then exit 1; fi
+          rm -rf Payload && mkdir -p Payload
+          cp -R "$APP_PATH" Payload/VTeen.app
+          zip -r VTeen-TrollStore.ipa Payload
+
+      - name: Upload IPA to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.ota-release.outputs.new_tag }}
+          files: VTeen-TrollStore.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
