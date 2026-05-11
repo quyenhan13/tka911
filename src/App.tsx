@@ -1,7 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Capacitor } from '@capacitor/core'
-import { CONFIG } from './config'
 
 import BottomTabs from './components/BottomTabs'
 import HomeScreen from './screens/HomeScreen'
@@ -45,7 +43,6 @@ function App() {
   const [watchingSlug, setWatchingSlug] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(() => getSavedUser());
   const [showSplash, setShowSplash] = useState(true);
-  const [updateStatus] = useState('');
 
   useEffect(() => {
     // 🏮 EMERGENCY: TẮT TOÀN BỘ OTA ĐỂ CỨU APP KHỎI LOOP
@@ -77,18 +74,27 @@ function App() {
 
     switch (activeTab) {
       case 'home':
-        return <HomeScreen onWatchMovie={(slug) => {
+        return <HomeScreen onWatch={(slug) => {
           setWatchingSlug(slug);
           setActiveTab('watch');
         }} />;
       case 'watch':
-        return <WatchScreen slug={watchingSlug} onBack={() => setActiveTab('home')} />;
+        return <WatchScreen slug={watchingSlug || ''} onBack={() => setActiveTab('home')} />;
       case 'profile':
-        return <ProfileScreen user={user} onLogout={handleLogout} />;
+        return (
+          <ProfileScreen 
+            user={user} 
+            onLogout={handleLogout} 
+            onWatch={(slug) => {
+              setWatchingSlug(slug);
+              setActiveTab('watch');
+            }} 
+          />
+        );
       case 'driver':
-        return <DriverScreen />;
+        return <DriverScreen user={user} />;
       default:
-        return <HomeScreen onWatchMovie={(slug) => {
+        return <HomeScreen onWatch={(slug) => {
           setWatchingSlug(slug);
           setActiveTab('watch');
         }} />;
@@ -117,7 +123,7 @@ function App() {
                   }}
                   transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                 >
-                  <Logo size={180} />
+                  <Logo size="xl" layout="vertical" />
                 </motion.div>
                 
                 <motion.div
@@ -135,7 +141,7 @@ function App() {
                   transition={{ delay: 0.5 }}
                   className="text-cyan-400 font-bold tracking-[0.2em] text-sm uppercase"
                 >
-                  {updateStatus || 'Premium Private Hub'}
+                  Premium Private Hub
                 </motion.div>
                 
                 <div className="flex gap-1.5">
@@ -165,7 +171,7 @@ function App() {
               className="relative z-10 pb-20 safe-area-bottom"
             >
               {renderScreen()}
-              <BottomTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+              <BottomTabs activeTab={activeTab} onTabChange={setActiveTab} />
             </motion.main>
           )}
         </AnimatePresence>
