@@ -55,14 +55,14 @@ function App() {
   const lastCheckTime = useRef<number>(0);
   const isChecking = useRef<boolean>(false);
 
-  useEf  useEffect(() => {
+  useEffect(() => {
     // 🏮 TIỂU CHIN ANTI-LOOP ENGINE
-    const checkOTA = async () => {
+    const checkOTA = async (force = false) => {
       // 1. Chốt chặn Session: Nếu đã gọi Update trong lần mở App này rồi thì thôi
       if (sessionStorage.getItem('vteen_ota_called')) return;
       
       const now = Date.now();
-      if (now - lastCheckTime.current < 120000) return;
+      if (!force && now - lastCheckTime.current < 120000) return;
       if (isChecking.current) return;
 
       isChecking.current = true;
@@ -94,10 +94,9 @@ function App() {
             const asset = response.data.assets.find((a: any) => a.name === 'update.zip');
             
             if (asset) {
-              // Ghi nhớ ngay lập tức để không bao giờ chạy lại trong phiên này
               sessionStorage.setItem('vteen_ota_called', 'true');
-              
               setUpdateStatus(`Updating to v${latestVersion}...`);
+              
               const listener = await (CapacitorUpdater as any).addListener('downloadProgress', (data: any) => {
                 setUpdateProgress(data.percent);
               });
@@ -110,7 +109,7 @@ function App() {
               setUpdateStatus('Installing...');
               await CapacitorUpdater.set(bundle);
               localStorage.setItem('vteen_last_ota_version', latestVersion);
-              return; // App sẽ tự Reload
+              return;
             }
           }
         }
@@ -122,14 +121,8 @@ function App() {
       }
     };
 
-    checkOTA();
-    }
-    };
-
-    // Gọi lần đầu tiên khi mở App
     checkOTA(true);
 
-    // 🔄 Tự động kiểm tra lại khi người dùng quay lại App (Resume)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         checkOTA();
@@ -137,11 +130,9 @@ function App() {
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
+
 
 
 
