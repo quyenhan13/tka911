@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Capacitor, CapacitorHttp } from '@capacitor/core'
+import { CONFIG } from './config'
+
 
 
 import BottomTabs from './components/BottomTabs'
@@ -76,9 +79,10 @@ function App() {
               
               // 2. Lắng nghe tiến độ tải
               const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
-              const listener = await CapacitorUpdater.addListener('downloadProgress', (data: any) => {
+              const listener = await (CapacitorUpdater as any).addListener('downloadProgress', (data: any) => {
                 setUpdateProgress(data.percent);
               });
+
 
               // 3. Tải và cài đặt
               const bundle = await CapacitorUpdater.download({
