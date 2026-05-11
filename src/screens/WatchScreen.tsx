@@ -466,68 +466,63 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       setWebPlayer({ html: null, src: null, videoSrc: null });
 
       try {
-        const watchHtml = await fetchVteenText(buildWebWatchPath(slug, currentEp.episode));
-        const servers = parseWebServers(watchHtml);
-        const selectedKey = servers[String(activeServer)]
-          ? String(activeServer)
-          : servers['1']
-            ? '1'
-            : servers['2']
-              ? '2'
-            : Object.keys(servers)[0];
+        const savedUser = localStorage.getItem('vteen_user');
+        const apiToken = savedUser ? JSON.parse(savedUser)?.api_token : null;
 
-        if (!selectedKey || !servers[selectedKey]) {
-          throw new Error('Khong tim thay server web');
+        // 🏮 SỬ DỤNG WATCH API (JSON) - KHÔNG PARSE HTML
+        const url = `${CONFIG.API_BASE_URL}/watch_api.php?slug=${encodeURIComponent(slug)}&ep=${currentEp.episode}&api_token=${encodeURIComponent(apiToken)}`;
+        
+        const response = await CapacitorHttp.get({ url });
+        
+        if (response.status !== 200 || !response.data || response.data.status !== 'success') {
+          throw new Error(response.data?.message || 'Không thể lấy dữ liệu máy chủ');
         }
 
-        const embedPath = toVteenPath(servers[selectedKey]);
+        const data = response.data;
+        const servers = data.servers || {};
+        const sources = data.sources || {};
+
         if (cancelled) return;
         setWebServers(servers);
 
-        // SỬ DỤNG srcDoc CHO TẤT CẢ CÁC SERVER ĐỂ VƯỢT LỖI X-Frame-Options (Từ chối kết nối)
-        const embedHtml = await fetchVteenText(embedPath);
+        const selectedKey = servers[String(activeServer)]
+          ? String(activeServer)
+          : Object.keys(servers)[0];
 
-        if (hasYouTubeEmbed(embedHtml)) {
-          const selectedServer = Number(selectedKey);
-          if (Number.isFinite(selectedServer) && selectedServer !== activeServer) {
-            setActiveServer(selectedServer);
-          }
-          setWebPlayer({ html: null, src: toVteenUrl(embedPath), videoSrc: null });
-          return;
+        if (!selectedKey || !servers[selectedKey]) {
+          throw new Error('Không tìm thấy link máy chủ');
         }
 
-        if (selectedKey === '1') {
-          const vipSrc = prepareServerOneHtml(embedHtml);
-          const videoSrc = extractVideoSource(embedHtml);
-          
-          if (vipSrc) {
-            const isHtml = vipSrc.trim().startsWith('<!DOCTYPE') || vipSrc.trim().startsWith('<html');
-            setWebPlayer({ html: isHtml ? vipSrc : null, src: isHtml ? null : vipSrc, videoSrc: null });
-          } else if (videoSrc) {
-            setWebPlayer({ html: null, src: null, videoSrc });
-          } else {
-            setWebPlayer({ html: prepareEmbedHtml(embedHtml), src: null, videoSrc: null });
+        // Kiểm tra xem có nguồn trực tiếp (YouTube/MP4) không
+        const directSource = sources[selectedKey];
+
+        if (directSource) {
+          if (directSource.type === 'youtube') {
+            const ytId = getYouTubeId(directSource.url);
+            if (ytId) {
+              setWebPlayer({ html: null, src: buildYouTubeEmbedUrl(ytId), videoSrc: null });
+            } else {
+              setWebPlayer({ html: null, src: directSource.url, videoSrc: null });
+            }
+          } else if (directSource.type === 'video' || directSource.type === 'hls') {
+            setWebPlayer({ html: null, src: null, videoSrc: directSource.url });
           }
         } else {
-          // Server 2 và các server khác cũng dùng srcDoc để không bị chặn
-          const videoSrc = extractVideoSource(embedHtml);
-          if (videoSrc) {
-            setWebPlayer({ html: null, src: null, videoSrc });
-          } else {
-            setWebPlayer({ html: prepareEmbedHtml(embedHtml), src: null, videoSrc: null });
-          }
+          // Fallback: Dùng iframe embed qua srcDoc
+          const embedPath = toVteenPath(servers[selectedKey]);
+          const embedHtml = await fetchVteenText(embedPath);
+          setWebPlayer({ html: prepareEmbedHtml(embedHtml), src: null, videoSrc: null });
         }
 
-        const selectedServer = Number(selectedKey);
-        if (Number.isFinite(selectedServer) && selectedServer !== activeServer) {
-          setActiveServer(selectedServer);
+        const selectedServerNum = Number(selectedKey);
+        if (Number.isFinite(selectedServerNum) && selectedServerNum !== activeServer) {
+          setActiveServer(selectedServerNum);
         }
       } catch (err) {
         if (!cancelled) {
           const errMsg = err instanceof Error ? err.message : 'Lỗi không xác định';
-          console.error('Web player error:', errMsg);
+          console.error('Watch API error:', errMsg);
           
-          // Dự phòng: Nếu lỗi web player, dùng link từ API
           if (currentEmbedSrc) {
             const isHtml = currentEmbedSrc.trim().startsWith('<!DOCTYPE') || currentEmbedSrc.trim().startsWith('<html');
             setWebPlayer({ 
@@ -535,8 +530,6 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
               src: isHtml ? null : currentEmbedSrc, 
               videoSrc: null 
             });
-            // Không hiện lỗi nếu có link dự phòng chạy được
-            setPlayerError(null);
           } else {
             setPlayerError(`Lỗi trình phát: ${errMsg}`);
           }
@@ -545,6 +538,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         if (!cancelled) setPlayerLoading(false);
       }
     };
+
 
     loadWebPlayer();
 
