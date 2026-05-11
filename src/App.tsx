@@ -67,29 +67,27 @@ function App() {
 
         setUpdateStatus('Checking for updates...');
         
+        // 1. Lấy thông tin bản release mới nhất từ GitHub
         const response = await CapacitorHttp.get({
           url: `https://api.github.com/repos/${CONFIG.GITHUB_REPO}/releases/latest`,
         });
 
         if (response.status === 200 && response.data) {
-          const latestVersion = (response.data.tag_name || '').replace(/^v/, ''); // Chuẩn hóa: v0.0.5 -> 0.0.5
+          const latestVersion = (response.data.tag_name || '').replace(/^v/, '');
           
-          // SO SÁNH CHUẨN: Chỉ cập nhật nếu số phiên bản thực sự khác nhau
-          if (latestVersion && latestVersion !== currentVersionTag) {
+          // Kiểm tra xem đã ghi nhớ bản này chưa
+          const lastMemorizedVersion = localStorage.getItem('vteen_last_ota_version');
+          
+          if (latestVersion && latestVersion !== currentVersionTag && latestVersion !== lastMemorizedVersion) {
             const asset = response.data.assets.find((a: any) => a.name === 'update.zip');
             
             if (asset) {
               setUpdateStatus(`Updating to v${latestVersion}...`);
               
-              // 2. Lắng nghe tiến độ tải
               const listener = await (CapacitorUpdater as any).addListener('downloadProgress', (data: any) => {
                 setUpdateProgress(data.percent);
               });
 
-
-
-
-              // 3. Tải và cài đặt
               const bundle = await CapacitorUpdater.download({
                 url: asset.browser_download_url,
                 version: latestVersion,
@@ -98,12 +96,20 @@ function App() {
               setUpdateStatus('Installing update...');
               await CapacitorUpdater.set(bundle);
               
-              // Xóa listener và reload
+              // Ghi nhớ phiên bản đã cập nhật thành công
+              localStorage.setItem('vteen_last_ota_version', latestVersion);
+              
               listener.remove();
-              return; // App sẽ tự reload, không cần chạy tiếp code bên dưới
+              return;
+            }
+          } else {
+            // Nếu đã là bản mới nhất hoặc đã ghi nhớ, lưu lại để lần sau check nhanh hơn
+            if (latestVersion) {
+              localStorage.setItem('vteen_last_ota_version', latestVersion);
             }
           }
         }
+
       } catch (err) {
         console.error('OTA Error:', err);
       } finally {
