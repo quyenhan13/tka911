@@ -50,17 +50,21 @@ function App() {
     const initOTA = async () => {
       try {
         console.log('🏮 OTA: Checking for stable updates...');
-        // Cần version và url chuẩn
-        const update = await CapacitorUpdater.download({
-          url: 'https://vteen.shop/api/update.zip',
-          version: 'latest' 
-        });
+        const response = await fetch('https://vteen.shop/api/update.php');
+        const updateInfo = await response.json();
 
-        if (update.version) {
-          console.log('🏮 OTA: Found new version:', update.version);
+        if (updateInfo.status === 'success' && updateInfo.url) {
+          console.log('🏮 OTA: Found new version:', updateInfo.version);
+          
           const lastVersion = localStorage.getItem('vteen_ota_version');
-          if (lastVersion !== update.version) {
-            localStorage.setItem('vteen_ota_version', update.version);
+          if (lastVersion !== updateInfo.version) {
+            console.log('🏮 OTA: Downloading...');
+            const update = await CapacitorUpdater.download({
+              url: updateInfo.url,
+              version: updateInfo.version
+            });
+            
+            localStorage.setItem('vteen_ota_version', updateInfo.version);
             await CapacitorUpdater.set({ id: update.id });
           }
         }
