@@ -61,23 +61,7 @@ const getYouTubeId = (value: string) => {
 const buildYouTubeEmbedUrl = (id: string) =>
   `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&origin=${encodeURIComponent(CONFIG.SITE_BASE_URL)}&widget_referrer=${encodeURIComponent(CONFIG.SITE_BASE_URL)}`;
 
-// Fix lỗi 153: Bọc YouTube vào srcDoc HTML có base vteen.shop
-// → Capacitor WebView sẽ phát đúng mà không bị YouTube chặn
-const buildYouTubeSrcDoc = (id: string) => `<!DOCTYPE html>
-<html>
-<head>
-  <base href="${CONFIG.SITE_BASE_URL}/">
-  <meta name="referrer" content="origin">
-  <style>*{margin:0;padding:0}html,body{width:100%;height:100%;background:#000;overflow:hidden}iframe{width:100%;height:100%;border:none}</style>
-</head>
-<body>
-  <iframe
-    src="https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-    allowfullscreen
-  ></iframe>
-</body>
-</html>`;
+
 
 const buildEmbedSrc = (embedUrl?: string | null, host?: string | null) => {
   const value = embedUrl?.trim();
