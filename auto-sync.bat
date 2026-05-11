@@ -1,12 +1,30 @@
 @echo off
+title VTeen Auto-Sync Engine 🏮
+mode con: cols=60 lines=15
+color 0b
+
 :loop
-echo [%time%] Dang kiem tra thay doi...
+cls
+echo ======================================================
+echo           🏮 TIỂU CHIN AUTO-SYNC ENGINE 🏮
+echo ======================================================
+echo [%time%] Dang theo doi thay doi code...
+
 git add .
-git commit -m "Auto update: %date% %time%" >nul 2>&1
+git commit -m "Auto-deploy: %date% %time% 🚀" >nul 2>&1
+
 if %errorlevel% equ 0 (
-    echo [%time%] Tim thay thay doi! Dang day len GitHub...
+    echo.
+    echo [!] PHAT HIEN THAY DOI!
+    echo [%time%] Dang day len GitHub...
     git push origin main
-    echo [%time%] Da cap nhat thanh cong.
+    echo [%time%] DA CAP NHAT THANH CONG!
+    echo.
+    echo [OK] Cho GitHub Actions xu ly OTA...
+) else (
+    echo [%time%] Khong co thay doi moi.
 )
-timeout /t 30 >nul
+
+:: Cho 20 giay truoc khi kiem tra lai
+timeout /t 20 >nul
 goto loop

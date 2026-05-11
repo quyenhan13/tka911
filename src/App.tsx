@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+
+
 import BottomTabs from './components/BottomTabs'
 import HomeScreen from './screens/HomeScreen'
 import WatchScreen from './screens/WatchScreen'
@@ -42,13 +44,83 @@ function App() {
   const [watchingSlug, setWatchingSlug] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(() => getSavedUser());
   const [showSplash, setShowSplash] = useState(true);
+  const [updateProgress, setUpdateProgress] = useState(0);
+  const [updateStatus, setUpdateStatus] = useState('');
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 2400);
-    return () => clearTimeout(timer);
+    // 🏮 TIỂU CHIN OTA ENGINE - Tự động kiểm tra và cập nhật
+    const checkOTA = async () => {
+      if (!Capacitor.isNativePlatform()) {
+        setTimeout(() => setShowSplash(false), 2400);
+        return;
+      }
+
+      try {
+        setUpdateStatus('Checking for updates...');
+        
+        // 1. Lấy thông tin bản release mới nhất từ GitHub
+        const response = await CapacitorHttp.get({
+          url: `https://api.github.com/repos/${CONFIG.GITHUB_REPO}/releases/latest`,
+        });
+
+        if (response.status === 200 && response.data) {
+          const latestVersion = response.data.tag_name; // Ví dụ: v2.0.1
+          const currentVersion = CONFIG.VERSION;
+          
+          // So sánh phiên bản (đơn giản: khác nhau là cập nhật)
+          if (latestVersion !== `v${currentVersion}` && latestVersion !== currentVersion) {
+            const asset = response.data.assets.find((a: any) => a.name === 'update.zip');
+            
+            if (asset) {
+              setUpdateStatus(`Updating to ${latestVersion}...`);
+              
+              // 2. Lắng nghe tiến độ tải
+              const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
+              const listener = await CapacitorUpdater.addListener('downloadProgress', (data: any) => {
+                setUpdateProgress(data.percent);
+              });
+
+              // 3. Tải và cài đặt
+              const bundle = await CapacitorUpdater.download({
+                url: asset.browser_download_url,
+                version: latestVersion,
+              });
+
+              setUpdateStatus('Installing update...');
+              await CapacitorUpdater.set(bundle);
+              
+              // Xóa listener và reload
+              listener.remove();
+              return; // App sẽ tự reload, không cần chạy tiếp code bên dưới
+            }
+          }
+        }
+      } catch (err) {
+        console.error('OTA Error:', err);
+      } finally {
+        setUpdateStatus('');
+        setTimeout(() => setShowSplash(false), 800);
+      }
+    };
+
+    checkOTA();
+
+    // 🔄 Tự động kiểm tra lại khi người dùng quay lại App (Resume)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkOTA();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
+
+
+
 
   const handleLoginSuccess = (userData: unknown) => {
     if (!isUser(userData)) {
@@ -133,11 +205,32 @@ function App() {
               >
                 <motion.div
                   initial={{ x: '-100%' }}
-                  animate={{ x: '100%' }}
-                  transition={{ duration: 1.1, ease: 'easeInOut', repeat: Infinity }}
-                  className="h-full w-1/2 rounded-full bg-primary shadow-[0_0_18px_rgba(6,182,212,0.85)]"
+                  animate={{ x: updateStatus ? `${updateProgress - 100}%` : '100%' }}
+                  transition={{ 
+                    duration: updateStatus ? 0.3 : 1.1, 
+                    ease: updateStatus ? 'linear' : 'easeInOut', 
+                    repeat: updateStatus ? 0 : Infinity 
+                  }}
+                  className="h-full w-full rounded-full bg-primary shadow-[0_0_18px_rgba(6,182,212,0.85)]"
                 />
               </motion.div>
+              {updateStatus && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-4 flex flex-col items-center gap-1"
+                >
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary/80">
+                    {updateStatus}
+                  </span>
+                  {updateProgress > 0 && (
+                    <span className="text-[14px] font-black text-white/90">
+                      {updateProgress}%
+                    </span>
+                  )}
+                </motion.div>
+              )}
+
             </motion.div>
           </motion.div>
         )}
