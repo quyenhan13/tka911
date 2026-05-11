@@ -68,7 +68,7 @@ function App() {
       setTimeout(initOTA, 5000);
     }
 
-    const t = setTimeout(() => setShowSplash(false), 2400);
+    const t = setTimeout(() => setShowSplash(false), 1200); // HIG: launch quickly, no long splash
     return () => clearTimeout(t);
   }, []);
 
