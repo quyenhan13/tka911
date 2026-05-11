@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useDeferredValue } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Avatar from '../components/Avatar';
 import Logo from '../components/Logo';
 import MovieCard from '../components/MovieCard';
