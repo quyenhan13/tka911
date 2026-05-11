@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { CONFIG } from './config'
+
 
 
 
@@ -50,11 +51,24 @@ function App() {
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateStatus, setUpdateStatus] = useState('');
 
+  // 🏮 BIẾN CHỐT CHẶN - Tránh nháy màn hình
+  const lastCheckTime = useRef<number>(0);
+  const isChecking = useRef<boolean>(false);
+
   useEffect(() => {
     // 🏮 TIỂU CHIN OTA ENGINE - Tự động kiểm tra và cập nhật
-    const checkOTA = async () => {
+    const checkOTA = async (force = false) => {
+      // 1. Chỉ check tối đa 1 lần mỗi 2 phút (trừ khi khởi động App)
+      const now = Date.now();
+      if (!force && now - lastCheckTime.current < 120000) return;
+      if (isChecking.current) return;
+
+      isChecking.current = true;
+      lastCheckTime.current = now;
+
       if (!Capacitor.isNativePlatform()) {
         setTimeout(() => setShowSplash(false), 2400);
+        isChecking.current = false;
         return;
       }
 
@@ -65,18 +79,18 @@ function App() {
         const currentBundle = await CapacitorUpdater.getLatest();
         const currentVersionTag = (currentBundle.version || '').replace(/^v/, ''); // Chuẩn hóa: v0.0.5 -> 0.0.5
 
-        setUpdateStatus('Checking for updates...');
+        // 2. Chỉ hiện thông báo "Checking" nếu chưa có thông tin trong bộ nhớ (Tránh nháy)
+        const lastMemorizedVersion = localStorage.getItem('vteen_last_ota_version');
+        if (latestVersionFromGitHubCache !== lastMemorizedVersion) {
+           // (Cần lấy GitHub trước mới biết có nên hiện hay không, tạm thời cứ ẩn đi cho lành)
+        }
         
-        // 1. Lấy thông tin bản release mới nhất từ GitHub
         const response = await CapacitorHttp.get({
           url: `https://api.github.com/repos/${CONFIG.GITHUB_REPO}/releases/latest`,
         });
 
         if (response.status === 200 && response.data) {
           const latestVersion = (response.data.tag_name || '').replace(/^v/, '');
-          
-          // Kiểm tra xem đã ghi nhớ bản này chưa
-          const lastMemorizedVersion = localStorage.getItem('vteen_last_ota_version');
           
           if (latestVersion && latestVersion !== currentVersionTag && latestVersion !== lastMemorizedVersion) {
             const asset = response.data.assets.find((a: any) => a.name === 'update.zip');
@@ -95,15 +109,11 @@ function App() {
 
               setUpdateStatus('Installing update...');
               await CapacitorUpdater.set(bundle);
-              
-              // Ghi nhớ phiên bản đã cập nhật thành công
               localStorage.setItem('vteen_last_ota_version', latestVersion);
-              
               listener.remove();
               return;
             }
           } else {
-            // Nếu đã là bản mới nhất hoặc đã ghi nhớ, lưu lại để lần sau check nhanh hơn
             if (latestVersion) {
               localStorage.setItem('vteen_last_ota_version', latestVersion);
             }
@@ -114,11 +124,13 @@ function App() {
         console.error('OTA Error:', err);
       } finally {
         setUpdateStatus('');
-        setTimeout(() => setShowSplash(false), 800);
+        isChecking.current = false;
+        setShowSplash(false); // Đảm bảo luôn tắt Splash
       }
     };
 
-    checkOTA();
+    // Gọi lần đầu tiên khi mở App
+    checkOTA(true);
 
     // 🔄 Tự động kiểm tra lại khi người dùng quay lại App (Resume)
     const handleVisibilityChange = () => {
@@ -133,6 +145,7 @@ function App() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
+
 
 
 
