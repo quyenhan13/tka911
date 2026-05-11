@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CapacitorUpdater } from '@capgo/capacitor-updater'
-import { App as CapApp } from '@capacitor/app'
 
 import BottomTabs from './components/BottomTabs'
 import HomeScreen from './screens/HomeScreen'
@@ -51,24 +50,22 @@ function App() {
     const initOTA = async () => {
       try {
         console.log('🏮 OTA: Checking for stable updates...');
-        // Kiểm tra phiên bản mới nhất từ Github Release (qua Capgo/update.php)
+        // Cần version và url chuẩn
         const update = await CapacitorUpdater.download({
-          url: 'https://vteen.shop/api/update.php' // Endpoint điều hướng OTA
+          url: 'https://vteen.shop/api/update.zip',
+          version: 'latest' 
         });
 
         if (update.version) {
           console.log('🏮 OTA: Found new version:', update.version);
-          
-          // Lưu vết phiên bản để tránh update đè liên tục
           const lastVersion = localStorage.getItem('vteen_ota_version');
           if (lastVersion !== update.version) {
-            console.log('🏮 OTA: Applying update and rebooting...');
             localStorage.setItem('vteen_ota_version', update.version);
             await CapacitorUpdater.set({ id: update.id });
           }
         }
       } catch (err) {
-        console.warn('🏮 OTA Check failed (Normal if offline):', err);
+        console.warn('🏮 OTA Check failed:', err);
       }
     };
 
