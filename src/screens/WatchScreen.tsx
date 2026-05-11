@@ -8,10 +8,7 @@ import { CONFIG } from '../config';
 
 interface Episode {
   episode: string;
-  embed_url: string | null;
-  embed_url_2: string | null;
-  embed_host: string | null;
-  embed_host_2: string | null;
+  title: string;
 }
 
 interface MovieDetails {
@@ -162,16 +159,12 @@ const normalizeEpisodes = (value: unknown): Episode[] => {
     .map((raw, index): Episode | null => {
       if (!raw || typeof raw !== 'object') return null;
       const item = raw as Record<string, unknown>;
-      const embedUrl = toText(item.embed_url || item.url || item.link || item.src).trim() || null;
-      const embedUrl2 = toText(item.embed_url_2 || item.backup_url || item.url_2 || item.link_2).trim() || null;
-      if (!embedUrl && !embedUrl2) return null;
+      const epNum = toText(item.episode || item.ep || item.name || index + 1).trim();
+      if (!epNum) return null;
 
       return {
-        episode: toText(item.episode || item.ep || item.name || index + 1).trim() || String(index + 1),
-        embed_url: embedUrl,
-        embed_url_2: embedUrl2,
-        embed_host: toText(item.embed_host || item.host).trim() || null,
-        embed_host_2: toText(item.embed_host_2 || item.host_2).trim() || null
+        episode: epNum,
+        title: toText(item.title || `Tập ${epNum}`).trim()
       };
     })
     .filter((episode): episode is Episode => Boolean(episode));
@@ -381,9 +374,9 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     return () => window.clearTimeout(timer);
   }, [fetchDetails, slug]);
 
-  const currentEmbedUrl = activeServer === 1 ? currentEp?.embed_url : currentEp?.embed_url_2;
-  const currentHost = activeServer === 1 ? currentEp?.embed_host : currentEp?.embed_host_2;
-  const currentEmbedSrc = buildEmbedSrc(currentEmbedUrl, currentHost);
+  // Phụ thuộc hoàn toàn vào watch_api.php để lấy embed link thực tế
+  // Không dùng fallback từ metadata để tối ưu hiệu năng và bảo mật
+
 
   const loadWebPlayer = useCallback(async (isCancelled?: () => boolean) => {
     if (!currentEp) return;
@@ -458,22 +451,12 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       if (!checkCancelled()) {
         const errMsg = err instanceof Error ? err.message : 'Lỗi không xác định';
         console.error('Watch API error:', errMsg);
-        
-        if (currentEmbedSrc) {
-          const isHtml = currentEmbedSrc.trim().startsWith('<!DOCTYPE') || currentEmbedSrc.trim().startsWith('<html');
-          setWebPlayer({ 
-            html: isHtml ? currentEmbedSrc : null, 
-            src: isHtml ? null : currentEmbedSrc, 
-            videoSrc: null 
-          });
-        } else {
-          setPlayerError(`Lỗi trình phát: ${errMsg}`);
-        }
+        setPlayerError(`Lỗi trình phát: ${errMsg}`);
       }
     } finally {
       if (!checkCancelled()) setPlayerLoading(false);
     }
-  }, [activeServer, currentEmbedSrc, currentEp, slug]);
+  }, [activeServer, currentEp, slug]);
 
 
   useEffect(() => {
@@ -568,18 +551,6 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           <iframe 
             key={`${currentEp?.episode}-${activeServer}-html`}
             srcDoc={webPlayer.html}
-            className="absolute inset-0 w-full h-full border-0"
-            style={{ backgroundColor: 'black', zIndex: 1 }}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-            title="Player"
-          />
-        ) : currentEmbedSrc ? (
-          <iframe 
-            key={`${currentEp?.episode}-${activeServer}-api`}
-            src={currentEmbedSrc.startsWith('<!DOCTYPE') ? undefined : currentEmbedSrc}
-            srcDoc={currentEmbedSrc.startsWith('<!DOCTYPE') ? currentEmbedSrc : undefined}
             className="absolute inset-0 w-full h-full border-0"
             style={{ backgroundColor: 'black', zIndex: 1 }}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

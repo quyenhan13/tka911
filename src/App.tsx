@@ -132,30 +132,27 @@ function App() {
           <LoginScreen onLoginSuccess={handleLoginSuccess} />
         ) : (
           <>
-            <AnimatePresence mode="wait">
-              {!watchingSlug && (
-                <motion.main
-                  key={activeTab}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="h-full overflow-y-auto overscroll-none pb-32"
-                >
-                  {activeTab === 'home' && <HomeScreen onWatch={(slug: string) => setWatchingSlug(slug)} />}
-                  {activeTab === 'driver' && (
-                    <ErrorBoundary><DriverScreen user={user} /></ErrorBoundary>
-                  )}
-                  {activeTab === 'profile' && (
-                    <ProfileScreen user={user} onLogout={handleLogout} onWatch={(slug: string) => setWatchingSlug(slug)} />
-                  )}
-                </motion.main>
-              )}
-            </AnimatePresence>
+            {/* Tab Container - Always mounted to preserve state */}
+            <main className="h-full w-full relative">
+              <div className={`h-full overflow-y-auto overscroll-none pb-32 ${activeTab === 'home' ? 'block' : 'hidden'}`}>
+                <HomeScreen 
+                  onWatch={(slug: string) => setWatchingSlug(slug)} 
+                  isWatching={!!watchingSlug} 
+                />
+              </div>
+              <div className={`h-full overflow-y-auto overscroll-none pb-32 ${activeTab === 'driver' ? 'block' : 'hidden'}`}>
+                <ErrorBoundary><DriverScreen user={user} /></ErrorBoundary>
+              </div>
+              <div className={`h-full overflow-y-auto overscroll-none pb-32 ${activeTab === 'profile' ? 'block' : 'hidden'}`}>
+                <ProfileScreen user={user} onLogout={handleLogout} onWatch={(slug: string) => setWatchingSlug(slug)} />
+              </div>
+            </main>
 
+            {/* Watch Screen Overlay - Preserves tabs in background */}
             <AnimatePresence>
               {watchingSlug && (
                 <motion.div
+                  key={watchingSlug}
                   initial={{ y: '100%' }}
                   animate={{ y: 0 }}
                   exit={{ y: '100%' }}
@@ -163,7 +160,11 @@ function App() {
                   className="fixed inset-0 z-[1000]"
                 >
                   <ErrorBoundary>
-                    <WatchScreen slug={watchingSlug} onBack={() => setWatchingSlug(null)} onUnauthorized={handleLogout} />
+                    <WatchScreen 
+                      slug={watchingSlug} 
+                      onBack={() => setWatchingSlug(null)} 
+                      onUnauthorized={handleLogout} 
+                    />
                   </ErrorBoundary>
                 </motion.div>
               )}

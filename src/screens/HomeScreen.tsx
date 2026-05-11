@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useDeferredValue } from 'react';
 import { motion } from 'framer-motion';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import Avatar from '../components/Avatar';
 import Logo from '../components/Logo';
 import MovieCard from '../components/MovieCard';
@@ -34,15 +35,23 @@ interface MoviesResponse {
 
 interface HomeProps {
   onWatch: (slug: string) => void;
+  isWatching?: boolean;
 }
 
 const fallbackPoster = 'https://placehold.co/300x450/0b0f17/64748b?text=VTeen';
 
-const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
+const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
-  const [history] = useState<HistoryItem[]>(() => getHistory());
+  const [history, setHistory] = useState<HistoryItem[]>(() => getHistory());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Cập nhật lịch sử xem khi người dùng quay lại từ trình phát
+  useEffect(() => {
+    if (!isWatching) {
+      setHistory(getHistory());
+    }
+  }, [isWatching]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('Tất cả');
   const [categories, setCategories] = useState<string[]>(['Tất cả', 'Phim bộ', 'Phim lẻ']);
@@ -55,23 +64,48 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   const fetchMovies = useCallback(async (pageNum: number) => {
     setLoading(true);
     setError(null);
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 10000); // 10s timeout
+
     try {
       const url = `${CONFIG.API_BASE_URL}/movies.php?page=${pageNum}&limit=24&nocache=1`;
-      const response = await fetch(url, { credentials: 'include' });
-      const result: MoviesResponse = await response.json();
+      
+      let result: MoviesResponse;
 
-      if (result.status === 'success' && Array.isArray(result.data)) {
+      if (Capacitor.isNativePlatform()) {
+        const response = await CapacitorHttp.get({ 
+          url, 
+          params: {},
+          headers: { 'Accept': 'application/json' },
+          connectTimeout: 10000,
+          readTimeout: 10000
+        });
+        result = response.data;
+      } else {
+        const response = await fetch(url, { 
+          credentials: 'include',
+          signal: abortController.signal
+        });
+        result = await response.json();
+      }
+
+      if (result && result.status === 'success' && Array.isArray(result.data)) {
         setMovies(result.data);
         setTotalPages(Math.max(1, Number(result.total_pages) || 1));
         setPage(Math.max(1, Number(result.page) || pageNum));
         if (result.categories) setCategories(['Tất cả', ...result.categories]);
       } else {
-        setError(result.message || 'Không tải được danh sách phim');
+        setError(result?.message || 'Không tải được danh sách phim');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Fetch error:', err);
-      setError('Kết nối máy chủ thất bại');
+      if (err.name === 'AbortError') {
+        setError('Yêu cầu hết thời gian, vui lòng thử lại');
+      } else {
+        setError('Kết nối máy chủ thất bại');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }, []);
