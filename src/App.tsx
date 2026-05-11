@@ -78,16 +78,12 @@ function App() {
         // 0. Lấy thông tin phiên bản hiện tại
         const currentBundle = await CapacitorUpdater.getLatest();
         const currentVersionTag = (currentBundle.version || '').replace(/^v/, ''); // Chuẩn hóa: v0.0.5 -> 0.0.5
-
-        // 2. Chỉ hiện thông báo "Checking" nếu chưa có thông tin trong bộ nhớ (Tránh nháy)
         const lastMemorizedVersion = localStorage.getItem('vteen_last_ota_version');
-        if (latestVersionFromGitHubCache !== lastMemorizedVersion) {
-           // (Cần lấy GitHub trước mới biết có nên hiện hay không, tạm thời cứ ẩn đi cho lành)
-        }
-        
+
         const response = await CapacitorHttp.get({
           url: `https://api.github.com/repos/${CONFIG.GITHUB_REPO}/releases/latest`,
         });
+
 
         if (response.status === 200 && response.data) {
           const latestVersion = (response.data.tag_name || '').replace(/^v/, '');
