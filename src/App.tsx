@@ -56,80 +56,15 @@ function App() {
 
 
   useEffect(() => {
-    // 🏮 TIỂU CHIN ANTI-LOOP ENGINE PRO MAX
+    // 🏮 TIỂU CHIN ANTI-LO    /*
     const checkOTA = async (force = false) => {
-      if (isChecking.current) return;
-      isChecking.current = true;
+      // ... tạm dừng để sửa lỗi loop
+    };
+    */
 
-      try {
-        const now = Date.now();
-        
-        // 🏮 1. PHÒNG TUYẾN CUỐI CÙNG: Chống lặp điên cuồng (Anti-Spam)
-        const reloadCount = parseInt(localStorage.getItem('vteen_ota_reload_count') || '0');
-        const lastReload = parseInt(localStorage.getItem('vteen_ota_last_reload_time') || '0');
-        
-        if (!force && reloadCount > 2 && (now - lastReload) < 300000) {
-          console.log('🏮 OTA: Anti-Spam Triggered. Blocking for 5m.');
-          setShowSplash(false);
-          isChecking.current = false;
-          return;
-        }
-
-        if (!Capacitor.isNativePlatform()) {
-          setShowSplash(false);
-          isChecking.current = false;
-          return;
-        }
-
-        const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
-
-        // 2. LẤY PHIÊN BẢN (So sánh 3 lớp)
-        const currentBundle = await CapacitorUpdater.current();
-        const systemVer = (currentBundle?.bundle?.id || 'none').replace(/^v/, '');
-        const localVer = (localStorage.getItem('vteen_last_ota_version') || 'none').replace(/^v/, '');
-        
-        const response = await CapacitorHttp.get({
-          url: `https://api.github.com/repos/${CONFIG.GITHUB_REPO}/releases/latest`,
-        });
-
-        if (response.status === 200 && response.data) {
-          const latestVer = (response.data.tag_name || '0.0.0').replace(/^v/, '');
-
-          // 🏮 CHẶN LẶP: Nếu trùng bất kỳ phiên bản nào (hệ thống hoặc bộ nhớ)
-          if (latestVer === systemVer || latestVer === localVer || latestVer === '0.0.0') {
-            console.log('🏮 OTA: Stable. Entering App...');
-            localStorage.setItem('vteen_last_ota_version', latestVer);
-            localStorage.setItem('vteen_ota_reload_count', '0'); // Reset nếu ổn định
-            setShowSplash(false);
-            return;
-          }
-
-          // 3. TIẾN HÀNH UPDATE THỰC SỰ
-          const asset = response.data.assets.find((a: any) => a.name === 'update.zip');
-          if (asset) {
-            // Đánh dấu lần reload này
-            localStorage.setItem('vteen_ota_reload_count', (reloadCount + 1).toString());
-            localStorage.setItem('vteen_ota_last_reload_time', now.toString());
-            
-            setUpdateStatus(`Cập nhật v${latestVer}...`);
-            
-            const bundle = await CapacitorUpdater.download({
-              url: asset.browser_download_url,
-              version: latestVer,
-            });
-
-            setUpdateStatus('Đang nạp...');
-            localStorage.setItem('vteen_last_ota_version', latestVer);
-            
-            await new Promise(r => setTimeout(r, 3000));
-            await CapacitorUpdater.set(bundle);
-            return; 
-          }
-        }
-      } catch (err) {
-        console.error('🏮 OTA Error:', err);
-      } finally {
-        isChecking.current = false;
+    // TẠM THỜI TẮT OTA ĐỂ CỨU APP
+    setShowSplash(false);
+t = false;
         setShowSplash(false);
       }
     };
