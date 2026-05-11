@@ -449,14 +449,13 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       const directSource = sources[selectedKey];
 
       if (directSource) {
-        if (directSource.type === 'youtube') {
-          const ytId = getYouTubeId(directSource.url);
-          if (ytId) {
-            // Dùng srcDoc thay vì src để tránh lỗi 153 trên Capacitor iOS
-            setWebPlayer({ html: buildYouTubeSrcDoc(ytId), src: null, videoSrc: null });
-          } else {
-            setWebPlayer({ html: null, src: directSource.url, videoSrc: null });
-          }
+        if (directSource.type === 'youtube_via_embed' || directSource.type === 'youtube') {
+          // Load qua URL thật trên vteen.shop (không dùng srcDoc)
+          // → YouTube thấy referrer/origin là vteen.shop → KHÔNG bị lỗi 153
+          const embedSrc = directSource.type === 'youtube_via_embed'
+            ? directSource.url
+            : buildYouTubeEmbedUrl(getYouTubeId(directSource.url) || directSource.url);
+          setWebPlayer({ html: null, src: embedSrc, videoSrc: null });
         } else if (directSource.type === 'video' || directSource.type === 'hls') {
           setWebPlayer({ html: null, src: null, videoSrc: directSource.url });
         }
