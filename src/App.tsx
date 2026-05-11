@@ -147,9 +147,8 @@ function App() {
 
 
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
+
 
 
 
