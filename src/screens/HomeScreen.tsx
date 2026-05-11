@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useDeferredValue } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from '../components/Avatar';
 import Logo from '../components/Logo';
@@ -40,7 +40,7 @@ const fallbackPoster = 'https://placehold.co/300x450/0b0f17/64748b?text=VTeen';
 
 const scrollContentTop = () => {
   const main = document.querySelector('main');
-  if (main) main.scrollTo({ top: 0, behavior: 'smooth' });
+  if (main) main.scrollTo({ top: 0 }); // Bỏ behavior smooth để đỡ lag khi chuyển trang
 };
 
 const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
@@ -55,12 +55,16 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [featuredIndex, setFeaturedIndex] = useState(0);
 
+  // Sử dụng deferred value cho search để UI ko bị khựng khi gõ
+  const deferredSearch = useDeferredValue(searchTerm);
+
   const fetchMovies = useCallback(async (pageNum: number) => {
     setLoading(true);
     setError(null);
 
     try {
-      const url = `${CONFIG.API_BASE_URL}/movies.php?page=${pageNum}&limit=24`;
+      // Thêm nocache=1 để ép server dọn dẹp cache cũ bị lỗi localhost
+      const url = `${CONFIG.API_BASE_URL}/movies.php?page=${pageNum}&limit=24&nocache=1`;
       const response = await fetch(url, { credentials: 'include' });
       const result: MoviesResponse = await response.json();
 
@@ -77,7 +81,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
       }
     } catch (err) {
       console.error('Fetch movies error:', err);
-      setError('Kết nối máy chủ thất bại. Thử lại sau.');
+      setError('Kết nối máy chủ thất bại');
     } finally {
       setLoading(false);
     }
@@ -87,25 +91,19 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
     fetchMovies(1);
   }, [fetchMovies]);
 
-  // Lọc phim theo tìm kiếm VÀ thể loại
   const filteredMovies = useMemo(() => {
     let result = movies;
-    
-    // 1. Lọc theo thể loại
     if (activeCategory !== 'Tất cả') {
       result = result.filter(m => m.category === activeCategory);
     }
-    
-    // 2. Lọc theo từ khóa
-    const keyword = searchTerm.trim().toLowerCase();
+    const keyword = deferredSearch.trim().toLowerCase();
     if (keyword) {
       result = result.filter((m) => m.display_name.toLowerCase().includes(keyword));
     }
-    
     return result;
-  }, [movies, searchTerm, activeCategory]);
+  }, [movies, deferredSearch, activeCategory]);
 
-  const featuredMovies = searchTerm.trim() || activeCategory !== 'Tất cả' ? [] : movies.slice(0, 8);
+  const featuredMovies = deferredSearch.trim() || activeCategory !== 'Tất cả' ? [] : movies.slice(0, 5);
   const activeFeaturedIndex = featuredMovies.length ? featuredIndex % featuredMovies.length : 0;
   const featuredMovie = featuredMovies[activeFeaturedIndex] ?? null;
 
@@ -113,58 +111,51 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
     if (featuredMovies.length <= 1) return;
     const timer = setInterval(() => {
       setFeaturedIndex((prev) => (prev + 1) % featuredMovies.length);
-    }, 5000);
+    }, 6000);
     return () => clearInterval(timer);
   }, [featuredMovies.length]);
 
   return (
-    <div className="flex flex-col gap-6 pb-20">
+    <div className="flex flex-col gap-6 pb-24">
       <header
-        className="sticky top-0 z-50 border-b border-white/5 bg-[#05070a]/60 px-5 pb-4 backdrop-blur-3xl"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1.25rem)' }}
+        className="sticky top-0 z-50 border-b border-white/5 bg-[#05070a] px-5 pb-4" // Bỏ backdrop-blur để mượt hơn
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}
       >
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 mb-4">
           <Logo size="sm" />
           <div className="flex items-center gap-3">
             <button
               onClick={() => fetchMovies(1)}
-              disabled={loading}
-              className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-white/40 active:scale-90 disabled:opacity-30"
+              className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/30 active:scale-90"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}>
                 <path d="M4 4v6h6M20 20v-6h-6M5 19a8 8 0 0013-3M19 5a8 8 0 00-13 3" />
               </svg>
             </button>
-            <Avatar size={38} isAdmin />
+            <Avatar size={36} isAdmin />
           </div>
         </div>
 
-        <div className="relative mt-4">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20">
+        <div className="relative mb-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/15">
             <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
             type="text"
-            placeholder="Tìm tên phim..."
+            placeholder="Tìm phim..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white/5 border border-white/5 rounded-2xl py-3.5 pl-11 pr-4 text-sm font-bold text-white placeholder:text-white/20 focus:outline-none focus:border-primary/40 transition-all"
+            className="w-full bg-white/5 border border-white/5 rounded-2xl py-3 pl-11 pr-4 text-sm font-bold text-white focus:outline-none focus:border-primary/20 transition-all"
           />
         </div>
 
-        {/* 🏮 THANH CHỌN PHIM (CATEGORY TABS) */}
-        <div className="flex gap-2 mt-4 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
           {categories.map((cat) => (
             <button
               key={cat}
-              onClick={() => {
-                setActiveCategory(cat);
-                setFeaturedIndex(0);
-              }}
+              onClick={() => { setActiveCategory(cat); setFeaturedIndex(0); }}
               className={`whitespace-nowrap px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                activeCategory === cat 
-                  ? 'bg-primary text-black shadow-lg shadow-primary/20' 
-                  : 'bg-white/5 text-white/40 border border-white/5'
+                activeCategory === cat ? 'bg-primary text-black' : 'bg-white/5 text-white/30'
               }`}
             >
               {cat}
@@ -173,137 +164,90 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch }) => {
         </div>
       </header>
 
-      {/* Featured Movie */}
-      <AnimatePresence mode="wait">
-        {featuredMovie && (
-          <motion.section 
+      {/* Featured Slider - Chỉ render 1 cái hiện tại để nhẹ máy */}
+      {featuredMovie && (
+        <section className="px-5">
+          <motion.button
             key={featuredMovie.slug}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="px-5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            onClick={() => onWatch(featuredMovie.slug)}
+            className="relative w-full h-[15rem] rounded-[2rem] overflow-hidden border border-white/5 bg-[#0a0f18] shadow-2xl active:scale-[0.98] transition-transform"
           >
-            <button
-              onClick={() => onWatch(featuredMovie.slug)}
-              className="relative w-full h-[16rem] rounded-[2rem] overflow-hidden border border-white/10 group active:scale-[0.98] transition-transform shadow-2xl"
-            >
-              <img src={featuredMovie.poster_url || fallbackPoster} className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700" alt="" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#05070a] via-[#05070a]/40 to-transparent" />
-              
-              <div className="absolute inset-x-0 bottom-0 p-6 flex items-end gap-5">
-                <div className="w-24 aspect-[2/3] rounded-2xl overflow-hidden border border-white/10 shadow-2xl shrink-0">
-                  <img src={featuredMovie.poster_url || fallbackPoster} className="w-full h-full object-cover" alt="" />
-                </div>
-                <div className="flex-1 text-left pb-2">
-                  <div className="flex gap-2 mb-3">
-                    <span className="bg-vip text-black text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-tighter">NỔI BẬT</span>
-                    <span className="bg-white/10 text-white/70 text-[8px] font-bold px-2 py-0.5 rounded uppercase backdrop-blur-md">
-                      {featuredMovie.is_series ? `${featuredMovie.total_eps} TẬP` : 'PHIM LẺ'}
-                    </span>
-                  </div>
-                  <h2 className="text-xl font-black text-white line-clamp-2 leading-tight">{featuredMovie.display_name}</h2>
-                  <p className="text-primary text-[10px] font-black mt-2 uppercase tracking-widest italic">Tập mới nhất: {featuredMovie.latest_ep}</p>
-                  <div className="mt-4 inline-flex items-center gap-2 bg-primary px-4 py-2 rounded-xl text-[9px] font-black text-black uppercase tracking-widest shadow-lg shadow-primary/20">
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path d="M8 5v14l11-7z"/></svg>
-                    XEM NGAY
-                  </div>
-                </div>
+            <img src={featuredMovie.poster_url || fallbackPoster} className="absolute inset-0 w-full h-full object-cover opacity-30" alt="" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#05070a] via-[#05070a]/40 to-transparent" />
+            <div className="absolute inset-0 p-6 flex flex-col justify-end">
+              <div className="flex gap-2 mb-2">
+                <span className="bg-vip text-black text-[8px] font-black px-2 py-0.5 rounded uppercase">HOT</span>
+                <span className="bg-white/10 text-white/60 text-[8px] font-bold px-2 py-0.5 rounded uppercase">{featuredMovie.is_series ? 'PHIM BỘ' : 'PHIM LẺ'}</span>
               </div>
-            </button>
-          </motion.section>
-        )}
-      </AnimatePresence>
+              <h2 className="text-xl font-black text-white line-clamp-2 leading-tight">{featuredMovie.display_name}</h2>
+              <p className="text-primary text-[9px] font-black mt-2 uppercase tracking-widest">TẬP MỚI: {featuredMovie.latest_ep}</p>
+            </div>
+          </motion.button>
+        </section>
+      )}
 
       {/* History */}
-      {history.length > 0 && !searchTerm && activeCategory === 'Tất cả' && (
+      {history.length > 0 && !deferredSearch && activeCategory === 'Tất cả' && (
         <section className="px-5">
-          <div className="flex justify-between items-center mb-4 px-1">
-            <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Tiếp tục xem</h3>
-            <span className="text-[9px] font-bold text-primary">{history.length} phim</span>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-[10px] font-black text-white/20 uppercase tracking-widest">Tiếp tục xem</h3>
           </div>
           <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-            {history.map((item) => (
-              <button 
-                key={item.slug}
-                onClick={() => onWatch(item.slug)}
-                className="w-28 shrink-0 text-left group active:scale-95 transition-transform"
-              >
-                <div className="relative aspect-[2/3] rounded-2xl overflow-hidden border border-white/5 bg-white/3">
-                  <img src={item.poster || fallbackPoster} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="" />
-                  <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
-                    <span className="bg-primary text-black text-[7px] font-black px-1.5 py-0.5 rounded uppercase">Tập {item.lastEpisode}</span>
+            {history.slice(0, 10).map((item) => (
+              <button key={item.slug} onClick={() => onWatch(item.slug)} className="w-24 shrink-0 text-left active:scale-95 transition-transform">
+                <div className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-white/5">
+                  <img src={item.poster || fallbackPoster} className="w-full h-full object-cover opacity-80" alt="" />
+                  <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black to-transparent">
+                    <span className="text-primary text-[7px] font-black uppercase">Tập {item.lastEpisode}</span>
                   </div>
                 </div>
-                <p className="mt-2 text-[10px] font-bold text-white/60 truncate px-1">{item.title}</p>
               </button>
             ))}
           </div>
         </section>
       )}
 
-      {/* Main List */}
+      {/* Main List - Bỏ motion ở ngoài để cuộn mượt hơn */}
       <section className="px-5">
-        <div className="flex justify-between items-center mb-6 px-1">
-          <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">
-            {searchTerm ? `Kết quả cho "${searchTerm}"` : `${activeCategory} mới cập nhật`}
-          </h3>
-          {!searchTerm && <span className="text-[9px] font-bold text-white/20">Trang {page}/{totalPages}</span>}
-        </div>
+        <h3 className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-4">
+          {deferredSearch ? 'Kết quả tìm kiếm' : 'Danh sách phim mới'}
+        </h3>
 
         {loading ? (
           <div className="grid grid-cols-2 gap-4">
-            {[1,2,3,4].map(i => (
-              <div key={i} className="aspect-[2/3] bg-white/3 rounded-2xl animate-pulse" />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="py-12 text-center">
-            <p className="text-sm text-red-400 mb-4 font-bold">{error}</p>
-            <button onClick={() => fetchMovies(page)} className="bg-white/10 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white">Thử lại</button>
+            {[1,2,3,4].map(i => <div key={i} className="aspect-[2/3] bg-white/5 rounded-2xl animate-pulse" />)}
           </div>
         ) : filteredMovies.length === 0 ? (
-          <div className="py-20 text-center bg-white/2 rounded-3xl border border-dashed border-white/10">
-            <p className="text-xs text-white/20 font-black uppercase tracking-widest">Không có dữ liệu</p>
+          <div className="py-20 text-center bg-white/3 rounded-3xl border border-white/5">
+            <p className="text-[10px] text-white/20 font-black uppercase tracking-widest">Không tìm thấy phim</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
-            {filteredMovies.map((movie, idx) => (
-              <motion.div
+            {filteredMovies.map((movie) => (
+              <MovieCard 
                 key={movie.slug}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: Math.min(idx * 0.03, 0.3) }}
-              >
-                <MovieCard 
-                  title={movie.display_name}
-                  poster={movie.poster_url}
-                  latestEp={movie.latest_ep}
-                  totalEps={movie.total_eps}
-                  isSeries={movie.is_series}
-                  onClick={() => onWatch(movie.slug)}
-                />
-              </motion.div>
+                title={movie.display_name}
+                poster={movie.poster_url}
+                latestEp={movie.latest_ep}
+                totalEps={movie.total_eps}
+                isSeries={movie.is_series}
+                onClick={() => onWatch(movie.slug)}
+              />
             ))}
           </div>
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && !searchTerm && (
-          <div className="flex justify-center items-center gap-3 mt-12 mb-10">
-            <button 
-              onClick={() => { setPage(p => Math.max(1, p-1)); fetchMovies(page-1); }}
-              disabled={page === 1}
-              className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 disabled:opacity-20"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4"><path d="M15 19l-7-7 7-7"/></svg>
+        {totalPages > 1 && !deferredSearch && (
+          <div className="flex justify-center items-center gap-4 mt-12">
+            <button onClick={() => fetchMovies(page-1)} disabled={page === 1} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M15 19l-7-7 7-7"/></svg>
             </button>
-            <span className="text-xs font-black text-white/30 uppercase tracking-widest">{page} / {totalPages}</span>
-            <button 
-              onClick={() => { setPage(p => Math.min(totalPages, p+1)); fetchMovies(page+1); }}
-              disabled={page === totalPages}
-              className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 disabled:opacity-20"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4"><path d="M9 5l7 7-7 7"/></svg>
+            <span className="text-[10px] font-black text-white/30 uppercase">{page} / {totalPages}</span>
+            <button onClick={() => fetchMovies(page+1)} disabled={page === totalPages} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M9 5l7 7-7 7"/></svg>
             </button>
           </div>
         )}
