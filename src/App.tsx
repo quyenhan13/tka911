@@ -61,31 +61,31 @@ function App() {
       try {
         const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
         
-        // 0. Lấy thông tin phiên bản hiện tại đang chạy (Bundle thực tế)
+        // 0. Lấy thông tin phiên bản hiện tại
         const currentBundle = await CapacitorUpdater.getLatest();
-        const currentVersionTag = currentBundle.version; // Ví dụ: v2.0.0 hoặc v0.0.1
+        const currentVersionTag = (currentBundle.version || '').replace(/^v/, ''); // Chuẩn hóa: v0.0.5 -> 0.0.5
 
         setUpdateStatus('Checking for updates...');
         
-        // 1. Lấy thông tin bản release mới nhất từ GitHub
         const response = await CapacitorHttp.get({
           url: `https://api.github.com/repos/${CONFIG.GITHUB_REPO}/releases/latest`,
         });
 
         if (response.status === 200 && response.data) {
-          const latestVersion = response.data.tag_name; // Ví dụ: v0.0.4
+          const latestVersion = (response.data.tag_name || '').replace(/^v/, ''); // Chuẩn hóa: v0.0.5 -> 0.0.5
           
-          // CHỈ CẬP NHẬT NẾU: Tag mới khác hoàn toàn với bản đang chạy
-          if (latestVersion !== currentVersionTag) {
+          // SO SÁNH CHUẨN: Chỉ cập nhật nếu số phiên bản thực sự khác nhau
+          if (latestVersion && latestVersion !== currentVersionTag) {
             const asset = response.data.assets.find((a: any) => a.name === 'update.zip');
             
             if (asset) {
-              setUpdateStatus(`Updating to ${latestVersion}...`);
+              setUpdateStatus(`Updating to v${latestVersion}...`);
               
               // 2. Lắng nghe tiến độ tải
               const listener = await (CapacitorUpdater as any).addListener('downloadProgress', (data: any) => {
                 setUpdateProgress(data.percent);
               });
+
 
 
 
