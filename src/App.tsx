@@ -102,7 +102,7 @@ function App() {
             if (asset) {
               setUpdateStatus(`Cập nhật v${latestVersion}...`);
               
-              const listener = await (CapacitorUpdater as any).addListener('downloadProgress', (data: any) => {
+              await (CapacitorUpdater as any).addListener('downloadProgress', (data: any) => {
                 setUpdateProgress(data.percent);
               });
 
@@ -119,6 +119,7 @@ function App() {
               await CapacitorUpdater.set(bundle);
               return; 
             }
+
           } else {
             if (latestVersion) localStorage.setItem('vteen_last_ota_version', latestVersion);
           }
