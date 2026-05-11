@@ -87,10 +87,17 @@ function App() {
 
         const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
 
-        // 2. LẤY PHIÊN BẢN HIỆN TẠI
+        // 2. LẤY PHIÊN BẢN HIỆN TẠI (Kết hợp nhiều nguồn cho chắc chắn)
         const currentBundle = await CapacitorUpdater.current();
-        const currentVersion = (currentBundle.bundle.id || 'v0.0.0').replace(/^v/, '');
-        console.log('🏮 OTA: Current Version:', currentVersion);
+        console.log('🏮 OTA: Current Bundle Info:', JSON.stringify(currentBundle));
+        
+        const currentVersion = (
+          currentBundle.bundle.id || 
+          localStorage.getItem('vteen_last_ota_version') || 
+          '0.0.0'
+        ).replace(/^v/, '');
+        
+        console.log('🏮 OTA: Detected Current Version:', currentVersion);
 
         const response = await CapacitorHttp.get({
           url: `https://api.github.com/repos/${CONFIG.GITHUB_REPO}/releases/latest`,
@@ -98,14 +105,14 @@ function App() {
 
         if (response.status === 200 && response.data) {
           const latestRelease = response.data;
-          const latestVersion = (latestRelease.tag_name || 'v0.0.0').replace(/^v/, '');
-          console.log('🏮 OTA: Latest Version:', latestVersion);
+          const latestVersion = (latestRelease.tag_name || '0.0.0').replace(/^v/, '');
+          console.log('🏮 OTA: Latest Version on Server:', latestVersion);
 
           // 3. SO SÁNH VÀ CẬP NHẬT
-          if (latestVersion !== currentVersion) {
+          if (latestVersion !== currentVersion && latestVersion !== '0.0.0') {
             const asset = latestRelease.assets.find((a: any) => a.name === 'update.zip');
             if (asset) {
-              setUpdateStatus(`Đang tải v${latestVersion}...`);
+              setUpdateStatus(`Đang tải bản ${latestVersion}...`);
               
               await (CapacitorUpdater as any).addListener('downloadProgress', (data: any) => {
                 setUpdateProgress(data.percent);
@@ -116,18 +123,21 @@ function App() {
                 version: latestVersion,
               });
 
-              setUpdateStatus('Đang cài đặt...');
+              setUpdateStatus('Đang chuẩn bị cài đặt...');
               
-              // Khóa chết 30 phút trước khi reload
+              // Khóa chết 30 phút
               localStorage.setItem('vteen_ota_lock', (Date.now() + 1800000).toString());
               localStorage.setItem('vteen_last_ota_version', latestVersion);
               
-              console.log('🏮 OTA: Applying update and reloading app...');
+              console.log('🏮 OTA: Waiting 5s for disk stability...');
+              await new Promise(r => setTimeout(r, 5000));
+              
+              console.log('🏮 OTA: Applying update now!');
               await CapacitorUpdater.set(bundle);
               return; 
             }
           } else {
-            console.log('🏮 OTA: App is already latest.');
+            console.log('🏮 OTA: Already on latest version.');
             localStorage.setItem('vteen_last_ota_version', latestVersion);
           }
         }
