@@ -132,11 +132,13 @@ function App() {
       }
     };
 
-    checkOTA(true);
+    // Gọi lần đầu tiên khi mở App (Không ép buộc để lock có tác dụng)
+    checkOTA(false);
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') checkOTA();
+      if (document.visibilityState === 'visible') checkOTA(false);
     };
+
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
