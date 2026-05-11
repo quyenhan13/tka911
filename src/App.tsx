@@ -80,27 +80,50 @@ function App() {
       }
 
       try {
-        const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
-        const currentBundle = await CapacitorUpdater.getLatest();
-        const currentVersionTag = (currentBundle.version || '').replace(/^v/, '');
-        const lastMemorizedVersion = localStorage.getItem('vteen_last_ota_version');
+        const now = Date.now();
+        const otaLock = localStorage.getItem('vteen_ota_lock');
+        
+        // 1. KIỂM TRA KHÓA (LOCK)
+        if (!force && otaLock) {
+          const lockTime = parseInt(otaLock);
+          if (now < lockTime || (now - lockTime) < 900000) { // Khóa 15 phút
+            console.log('🏮 OTA: System Locked. Skipping check.');
+            setShowSplash(false);
+            return;
+          }
+        }
 
-        // Nghỉ 2s cho ổn định rồi mới gọi GitHub
-        await new Promise(r => setTimeout(r, 2000));
+        // Đặt khóa ngay lập tức để ngăn các lần check song song
+        localStorage.setItem('vteen_ota_lock', now.toString());
+
+        if (!Capacitor.isNativePlatform()) {
+          setShowSplash(false);
+          isChecking.current = false;
+          return;
+        }
+
+        const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
+
+        // 2. LẤY PHIÊN BẢN HIỆN TẠI THỰC TẾ
+        const currentBundle = await CapacitorUpdater.current();
+        const currentVersion = currentBundle.bundle.id || 'none';
+        console.log('🏮 OTA: Current Bundle ID:', currentVersion);
 
         const response = await CapacitorHttp.get({
           url: `https://api.github.com/repos/${CONFIG.GITHUB_REPO}/releases/latest`,
         });
 
         if (response.status === 200 && response.data) {
-          const latestVersion = (response.data.tag_name || '').replace(/^v/, '');
-          
-          // Kiểm tra gắt gao: Khác bản hiện tại VÀ Khác bản vừa lưu
-          if (latestVersion && latestVersion !== currentVersionTag && latestVersion !== lastMemorizedVersion) {
-            const asset = response.data.assets.find((a: any) => a.name === 'update.zip');
-            
+          const latestRelease = response.data;
+          const latestVersion = latestRelease.tag_name.replace('v', '');
+          console.log('🏮 OTA: Latest Version on GitHub:', latestVersion);
+
+          // 3. SO SÁNH PHIÊN BẢN
+          if (latestVersion !== currentVersion) {
+            const asset = latestRelease.assets.find((a: any) => a.name === 'update.zip');
             if (asset) {
-              setUpdateStatus(`Cập nhật v${latestVersion}...`);
+              setUpdateStatus(`Đang tải v${latestVersion}...`);
+              console.log('🏮 OTA: Found new version. Downloading...');
               
               await (CapacitorUpdater as any).addListener('downloadProgress', (data: any) => {
                 setUpdateProgress(data.percent);
@@ -112,20 +135,21 @@ function App() {
               });
 
               setUpdateStatus('Đang cài đặt...');
-              localStorage.setItem('vteen_last_ota_version', latestVersion);
-              // Lưu lock xa hơn (30 phút) trước khi set bundle để chắc chắn không loop
+              // Khóa chết 30 phút để sau khi reload App không bao giờ chạy lại
               localStorage.setItem('vteen_ota_lock', (Date.now() + 1800000).toString());
+              localStorage.setItem('vteen_last_ota_version', latestVersion);
               
+              console.log('🏮 OTA: Setting bundle and reloading...');
               await CapacitorUpdater.set(bundle);
               return; 
             }
-
           } else {
-            if (latestVersion) localStorage.setItem('vteen_last_ota_version', latestVersion);
+            console.log('🏮 OTA: App is up to date.');
+            localStorage.setItem('vteen_last_ota_version', latestVersion);
           }
         }
       } catch (err) {
-        console.error('OTA Error:', err);
+        console.error('🏮 OTA Error:', err);
       } finally {
         isChecking.current = false;
         setUpdateStatus('');
@@ -133,7 +157,7 @@ function App() {
       }
     };
 
-    // Gọi lần đầu tiên khi mở App (Không ép buộc để lock có tác dụng)
+    // Gọi lần đầu tiên khi mở App
     checkOTA(false);
 
     const handleVisibilityChange = () => {
