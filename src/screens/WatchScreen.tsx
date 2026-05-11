@@ -383,11 +383,13 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
   const currentHost = activeServer === 1 ? currentEp?.embed_host : currentEp?.embed_host_2;
   const currentEmbedSrc = buildEmbedSrc(currentEmbedUrl, currentHost);
 
-  const loadWebPlayer = useCallback(async (isCancelled: () => boolean) => {
+  const loadWebPlayer = useCallback(async (isCancelled?: () => boolean) => {
     if (!currentEp) return;
     setPlayerLoading(true);
     setPlayerError(null);
     setWebPlayer({ html: null, src: null, videoSrc: null });
+
+    const checkCancelled = () => isCancelled ? isCancelled() : false;
 
     try {
       const savedUser = localStorage.getItem('vteen_user');
@@ -406,7 +408,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       const servers = data.servers || {};
       const sources = data.sources || {};
 
-      if (isCancelled()) return;
+      if (checkCancelled()) return;
       setWebServers(servers);
 
       const selectedKey = servers[String(activeServer)]
@@ -443,7 +445,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         setActiveServer(selectedServerNum);
       }
     } catch (err) {
-      if (!isCancelled()) {
+      if (!checkCancelled()) {
         const errMsg = err instanceof Error ? err.message : 'Lỗi không xác định';
         console.error('Watch API error:', errMsg);
         
@@ -459,9 +461,10 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         }
       }
     } finally {
-      if (!isCancelled()) setPlayerLoading(false);
+      if (!checkCancelled()) setPlayerLoading(false);
     }
   }, [activeServer, currentEmbedSrc, currentEp, slug]);
+
 
   useEffect(() => {
     let cancelled = false;
