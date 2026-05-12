@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Capacitor, CapacitorHttp } from '@capacitor/core';
-import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { getFavorites } from '../storage/favorites';
 import { getHistory } from '../storage/watchHistory';
 import { CONFIG } from '../config';
+import { fetchUpdateInfo, getCurrentOtaVersion, hasNewerVersion, installUpdate, reloadForUpdate } from '../ota';
 
 interface User {
   display_name?: string;
@@ -37,72 +36,51 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
   const checkUpdates = async (manual = false) => {
     setChecking(true);
     try {
-      const url = `${CONFIG.API_BASE_URL}/update.php?nocache=${manual ? '1' : '0'}`;
-      let data: any;
-
-      if (Capacitor.isNativePlatform()) {
-        const response = await CapacitorHttp.get({ url });
-        data = response.data;
-      } else {
-        const res = await fetch(url);
-        data = await res.json();
-      }
-
+      const data = await fetchUpdateInfo(manual);
       if (data && data.status === 'success' && data.version) {
         setLatestVersion(data.version);
-        if (manual && data.version === currentVersion) {
-          alert('Ứng dụng đã là bản mới nhất!');
+        if (manual && !hasNewerVersion(data.version, currentVersion)) {
+          alert('Ung dung da la ban moi nhat!');
         }
       }
     } catch (err) {
       console.error('Update check error:', err);
-      setLatestVersion('Lỗi');
+      setLatestVersion('Loi');
     } finally {
       setChecking(false);
     }
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem('vteen_ota_version') || CONFIG.VERSION;
+    const saved = getCurrentOtaVersion();
     setCurrentVersion(saved);
     checkUpdates();
   }, []);
 
   const handleUpdate = async () => {
-    if (!latestVersion || latestVersion === currentVersion) return;
+    if (!hasNewerVersion(latestVersion, currentVersion)) return;
     
     setUpdating(true);
     try {
-      const url = `${CONFIG.API_BASE_URL}/update.php?nocache=1`;
-      let data: any;
-
-      if (Capacitor.isNativePlatform()) {
-        const response = await CapacitorHttp.get({ url });
-        data = response.data;
-      } else {
-        const res = await fetch(url);
-        data = await res.json();
-      }
-
+      const data = await fetchUpdateInfo(true);
       if (data && data.status === 'success' && data.url) {
-        const bundle = await CapacitorUpdater.download({ url: data.url, version: data.version });
-        await CapacitorUpdater.set({ id: bundle.id });
-        localStorage.setItem('vteen_ota_version', data.version);
+        await installUpdate(data);
+        setCurrentVersion(data.version || CONFIG.VERSION);
         
-        alert('Cập nhật thành công! App sẽ khởi động lại.');
+        alert('Cap nhat thanh cong! App se khoi dong lai.');
         setTimeout(() => {
-          CapacitorUpdater.reload();
+          reloadForUpdate();
         }, 1500);
       }
     } catch (err) {
       console.error('Update execution error:', err);
-      alert('Cập nhật thất bại, vui lòng thử lại sau.');
+      alert('Cap nhat that bai, vui long thu lai sau.');
     } finally {
       setUpdating(false);
     }
   };
 
-  const isUpToDate = latestVersion && currentVersion === latestVersion;
+  const isUpToDate = latestVersion && !hasNewerVersion(latestVersion, currentVersion);
 
   return (
     <div className="flex flex-col gap-6 pb-10">
@@ -219,7 +197,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
             </button>
           </div>
 
-          {!isUpToDate && latestVersion && latestVersion !== 'Lỗi' && (
+          {!isUpToDate && latestVersion && latestVersion !== 'Loi' && (
             <div className="pt-4 border-t border-white/5">
               <div className="flex items-center justify-between mb-4">
                 <div>

@@ -64,6 +64,7 @@ interface DriverProps {
 const WEB_DRIVE_PATH = '/driver/index.php';
 const DRIVE_CACHE_PREFIX = 'vteen_drive_cache_v2';
 const DRIVE_CACHE_MAX_AGE = 1000 * 60 * 3;
+const DRIVE_REQUEST_TIMEOUT_MS = 10000;
 
 const unique = (values: string[]) => Array.from(new Set(values.filter(Boolean)));
 
@@ -114,7 +115,13 @@ const parseWebDrive = (html: string): WebDriveState => {
       const rawHref = titleLink?.getAttribute('href') || '';
       if (!title || !rawHref) return null;
 
-      const url = new URL(rawHref, CONFIG.SITE_BASE_URL);
+      let url: URL;
+      try {
+        url = new URL(rawHref, CONFIG.SITE_BASE_URL);
+      } catch {
+        return null;
+      }
+
       const shortCode = url.searchParams.get('s') || rawHref;
       const account = decodeHtml(card.querySelector('.vtd-badge')?.textContent || 'drive').toLowerCase();
       const image = card.querySelector<HTMLImageElement>('.vtd-preview img');
@@ -174,6 +181,25 @@ const writeDriveCache = (account: string, query: string, cache: DriveCache) => {
   }
 };
 
+const withDriveTimeout = async <T,>(task: Promise<T>, timeoutMs = DRIVE_REQUEST_TIMEOUT_MS): Promise<T> => {
+  let timer: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = window.setTimeout(() => reject(new Error('Drive request timeout')), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([task, timeout]);
+  } finally {
+    if (timer) window.clearTimeout(timer);
+  }
+};
+
+const fetchDriverJson = async (url: string) => {
+  const response = await withDriveTimeout(fetch(url, { cache: 'no-store' }));
+  if (!response.ok) throw new Error(`API Drive HTTP ${response.status}`);
+  return response.json() as Promise<DriverApiResponse>;
+};
+
 const buildWebDrivePath = (account: string, query: string, forceRefresh = false) => {
   const params = new URLSearchParams();
   params.set('account', account);
@@ -186,19 +212,19 @@ const fetchWebDriveHtml = async (account: string, query: string, forceRefresh = 
   const path = buildWebDrivePath(account, query, forceRefresh);
 
   if (import.meta.env.DEV) {
-    const response = await fetch(`/__vteen${path}`, { credentials: 'include' });
+    const response = await withDriveTimeout(fetch(`/__vteen${path}`, { credentials: 'include', cache: 'no-store' }));
     if (!response.ok) throw new Error(`Web Drive HTTP ${response.status}`);
     return response.text();
   }
 
   const url = `${CONFIG.SITE_BASE_URL}${path}`;
   if (Capacitor.isNativePlatform()) {
-    const response = await CapacitorHttp.get({ url, responseType: 'text' });
+    const response = await withDriveTimeout(CapacitorHttp.get({ url, responseType: 'text' }));
     if (response.status < 200 || response.status >= 300) throw new Error(`Web Drive HTTP ${response.status}`);
     return typeof response.data === 'string' ? response.data : String(response.data ?? '');
   }
 
-  const response = await fetch(url, { credentials: 'include' });
+  const response = await withDriveTimeout(fetch(url, { credentials: 'include', cache: 'no-store' }));
   if (!response.ok) throw new Error(`Web Drive HTTP ${response.status}`);
   return response.text();
 };
@@ -225,7 +251,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
     try {
       const savedUser = localStorage.getItem('vteen_user');
       const apiToken = JSON.parse(savedUser || '{}')?.api_token;
-      await fetch(`${CONFIG.API_BASE_URL}/driver_list.php?delete_file=${fileId}&from_account=${account}&api_token=${apiToken}`);
+      await withDriveTimeout(fetch(`${CONFIG.API_BASE_URL}/driver_list.php?delete_file=${fileId}&from_account=${account}&api_token=${apiToken}`, { cache: 'no-store' }));
       fetchFiles(true);
     } catch (err) {
       console.error('Delete error:', err);
@@ -250,8 +276,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       const savedUser = localStorage.getItem('vteen_user');
       const apiToken = savedUser ? JSON.parse(savedUser)?.api_token : null;
       const apiRequest = apiToken
-        ? fetch(`${CONFIG.API_BASE_URL}/driver_list.php?account=${activeAccount}&q=${encodeURIComponent(query)}&api_token=${apiToken}${forceRefresh ? '&refresh=1' : ''}`)
-            .then((response) => response.json() as Promise<DriverApiResponse>)
+        ? fetchDriverJson(`${CONFIG.API_BASE_URL}/driver_list.php?account=${activeAccount}&q=${encodeURIComponent(query)}&api_token=${apiToken}${forceRefresh ? '&refresh=1' : ''}`)
         : Promise.resolve(null);
       const webRequest = fetchWebDriveHtml(activeAccount, query, forceRefresh).then(parseWebDrive);
       const failures: string[] = [];
@@ -263,13 +288,13 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       const applyDriveState = () => {
         const nextAccounts = unique(['all', ...webState.accounts, ...apiAccounts]);
         const nextFiles = mergeFiles(apiFiles, webState.files);
-        if (nextFiles.length === 0) return;
-        setFiles(nextFiles);
         setAccounts(nextAccounts);
-        if (nextQuota) setQuota(nextQuota);
         if (Object.keys(webState.authUrls || {}).length > 0) {
           setAuthUrls((prev) => ({ ...prev, ...webState.authUrls }));
         }
+        if (nextFiles.length === 0) return;
+        setFiles(nextFiles);
+        if (nextQuota) setQuota(nextQuota);
         setLoading(false);
         writeDriveCache(activeAccount, query, {
           files: nextFiles,
@@ -338,10 +363,10 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       const formData = new FormData();
       formData.append('file_upload', file);
 
-      const response = await fetch(`${CONFIG.API_BASE_URL}/driver_list.php?account=${activeAccount}&api_token=${apiToken}`, {
+      const response = await withDriveTimeout(fetch(`${CONFIG.API_BASE_URL}/driver_list.php?account=${activeAccount}&api_token=${apiToken}`, {
         method: 'POST',
         body: formData
-      });
+      }));
 
       const result = await response.json();
       if (result.status === 'success') {
@@ -482,10 +507,10 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
                 try {
                   const savedUser = localStorage.getItem('vteen_user');
                   const apiToken = JSON.parse(savedUser || '{}')?.api_token;
-                  await fetch(`${CONFIG.API_BASE_URL}/driver_list.php?api_token=${apiToken}`, {
+                  await withDriveTimeout(fetch(`${CONFIG.API_BASE_URL}/driver_list.php?api_token=${apiToken}`, {
                     method: 'POST',
                     body: formData
-                  });
+                  }));
                   fetchFiles(true);
                 } catch (err) {
                   console.error('Upload token error:', err);

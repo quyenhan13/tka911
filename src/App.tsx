@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Capacitor, CapacitorHttp } from '@capacitor/core'
+import { Capacitor } from '@capacitor/core'
 import { CapacitorUpdater } from '@capgo/capacitor-updater'
 
 import BottomTabs from './components/BottomTabs'
@@ -12,7 +12,7 @@ import DriverScreen from './screens/DriverScreen'
 import UniverseBackground from './components/UniverseBackground'
 import ErrorBoundary from './components/ErrorBoundary'
 import Logo from './components/Logo'
-import { CONFIG } from './config'
+import { fetchUpdateInfo, getCurrentOtaVersion, hasNewerVersion, installUpdate, reloadForUpdate } from './ota'
 import './index.css'
 
 interface User {
@@ -47,47 +47,37 @@ function App() {
 
   useEffect(() => {
     const isNative = Capacitor.isNativePlatform();
+    let otaTimer: number | undefined;
+    let cancelled = false;
 
     if (isNative) {
       try { CapacitorUpdater.notifyAppReady(); } catch {}
 
       const initOTA = async () => {
         try {
-          const url = `${CONFIG.API_BASE_URL}/update.php`;
-          let info: any;
+          const info = await fetchUpdateInfo(false, 7000);
+          if (cancelled || !info || !hasNewerVersion(info.version, getCurrentOtaVersion())) return;
 
-          if (Capacitor.isNativePlatform()) {
-            const response = await CapacitorHttp.get({ url });
-            info = response.data;
-          } else {
-            const res = await fetch(url);
-            info = await res.json();
-          }
+          console.log(`[OTA] New version found: ${info.version}`);
+          await installUpdate(info);
 
-          if (info && info.status === 'success' && info.url) {
-            const currentVersion = localStorage.getItem('vteen_ota_version') || CONFIG.VERSION;
-            if (info.version !== currentVersion) {
-              console.log(`[OTA] New version found: ${info.version}`);
-              const bundle = await CapacitorUpdater.download({ url: info.url, version: info.version });
-              await CapacitorUpdater.set({ id: bundle.id });
-              localStorage.setItem('vteen_ota_version', info.version);
-              
-              // Tự động khởi động lại để áp dụng bản cập nhật
-              setTimeout(() => {
-                CapacitorUpdater.reload();
-              }, 1000);
-            }
+          if (!cancelled) {
+            window.setTimeout(() => reloadForUpdate(), 1000);
           }
         } catch (err) {
           console.error('[OTA] Error:', err);
         }
       };
 
-      setTimeout(initOTA, 5000);
+      otaTimer = window.setTimeout(initOTA, 8000);
     }
 
     const t = setTimeout(() => setShowSplash(false), 1200); // HIG: launch quickly, no long splash
-    return () => clearTimeout(t);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      if (otaTimer) window.clearTimeout(otaTimer);
+    };
   }, []);
 
   const handleLoginSuccess = (userData: unknown) => {
