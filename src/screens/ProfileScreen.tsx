@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { getFavorites } from '../storage/favorites';
 import { getHistory } from '../storage/watchHistory';
+import { CONFIG } from '../config';
 
 interface User {
   display_name?: string;
@@ -27,39 +28,80 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
   const [activeTab, setActiveTab] = useState('favorites');
   const activeItems = activeTab === 'favorites' ? favorites : history;
 
-  const [currentVersion, setCurrentVersion] = useState<string>('...');
+  const [currentVersion, setCurrentVersion] = useState<string>(CONFIG.VERSION);
   const [latestVersion, setLatestVersion] = useState<string>('');
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
+  const checkUpdates = async (manual = false) => {
+    setChecking(true);
+    try {
+      const url = `${CONFIG.API_BASE_URL}/update.php?nocache=${manual ? '1' : '0'}`;
+      let data: any;
+
+      if (Capacitor.isNativePlatform()) {
+        const response = await CapacitorHttp.get({ url });
+        data = response.data;
+      } else {
+        const res = await fetch(url);
+        data = await res.json();
+      }
+
+      if (data && data.status === 'success' && data.version) {
+        setLatestVersion(data.version);
+        if (manual && data.version === currentVersion) {
+          alert('Ứng dụng đã là bản mới nhất!');
+        }
+      }
+    } catch (err) {
+      console.error('Update check error:', err);
+      setLatestVersion('Lỗi');
+    } finally {
+      setChecking(false);
+    }
+  };
 
   useEffect(() => {
-    const saved = localStorage.getItem('vteen_ota_version') || 'Chưa OTA';
+    const saved = localStorage.getItem('vteen_ota_version') || CONFIG.VERSION;
     setCurrentVersion(saved);
-
-    const check = async () => {
-      try {
-        const url = 'https://vteen.shop/api/update.php';
-        let data: any;
-
-        if (Capacitor.isNativePlatform()) {
-          const response = await CapacitorHttp.get({ url });
-          data = response.data;
-        } else {
-          const res = await fetch(url);
-          data = await res.json();
-        }
-
-        if (data && data.version) setLatestVersion(data.version);
-      } catch (err) {
-        console.error('Update check error:', err);
-        setLatestVersion('Lỗi kết nối');
-      } finally {
-        setChecking(false);
-      }
-    };
-    check();
+    checkUpdates();
   }, []);
 
-  const isUpToDate = !checking && latestVersion && currentVersion === latestVersion;
+  const handleUpdate = async () => {
+    if (!latestVersion || latestVersion === currentVersion) return;
+    
+    setUpdating(true);
+    try {
+      const url = `${CONFIG.API_BASE_URL}/update.php?nocache=1`;
+      let data: any;
+
+      if (Capacitor.isNativePlatform()) {
+        const response = await CapacitorHttp.get({ url });
+        data = response.data;
+      } else {
+        const res = await fetch(url);
+        data = await res.json();
+      }
+
+      if (data && data.status === 'success' && data.url) {
+        const bundle = await CapacitorUpdater.download({ url: data.url, version: data.version });
+        await CapacitorUpdater.set({ id: bundle.id });
+        localStorage.setItem('vteen_ota_version', data.version);
+        
+        alert('Cập nhật thành công! App sẽ khởi động lại.');
+        setTimeout(() => {
+          CapacitorUpdater.reload();
+        }, 1500);
+      }
+    } catch (err) {
+      console.error('Update execution error:', err);
+      alert('Cập nhật thất bại, vui lòng thử lại sau.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const isUpToDate = latestVersion && currentVersion === latestVersion;
 
   return (
     <div className="flex flex-col gap-6 pb-10">
@@ -157,25 +199,62 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
         </button>
       </div>
 
-      {/* VERSION DISPLAY */}
+      {/* VERSION DISPLAY & UPDATE */}
       <div className="px-6 pb-6">
-        <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-5 py-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">Phiên bản</p>
-            <p className="text-xs font-black text-white font-mono">{currentVersion}</p>
-            <p className="text-[9px] text-white/30 mt-0.5">
-              Mới nhất: <span className={checking ? 'text-white/20' : isUpToDate ? 'text-green-400' : 'text-yellow-400'}>
-                {checking ? '...' : latestVersion}
-              </span>
-            </p>
+        <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-5 py-4 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-1">Phiên bản hiện tại</p>
+              <p className="text-sm font-black text-white font-mono">{currentVersion}</p>
+            </div>
+            <button 
+              onClick={() => checkUpdates(true)}
+              disabled={checking}
+              className="p-2 rounded-xl bg-white/5 text-white/40 hover:text-primary transition-colors disabled:opacity-50"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`w-4 h-4 ${checking ? 'animate-spin' : ''}`}>
+                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
           </div>
-          <div className={`shrink-0 rounded-xl px-3 py-2 text-[9px] font-black uppercase tracking-wider ${
-            checking ? 'bg-white/5 text-white/30' :
-            isUpToDate ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-            'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-          }`}>
-            {checking ? '🔄 Đang kiểm tra' : isUpToDate ? '✓ Mới nhất' : '↑ Cần cập nhật'}
-          </div>
+
+          {!isUpToDate && latestVersion && latestVersion !== 'Lỗi' && (
+            <div className="pt-4 border-t border-white/5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-yellow-500/80 mb-1">Bản cập nhật mới</p>
+                  <p className="text-sm font-black text-white font-mono">{latestVersion}</p>
+                </div>
+                <div className="bg-yellow-500/10 text-yellow-400 px-2 py-1 rounded-lg text-[8px] font-black uppercase border border-yellow-500/20">
+                  RECOMENDED
+                </div>
+              </div>
+              <button
+                onClick={handleUpdate}
+                disabled={updating}
+                className="w-full bg-primary py-3 rounded-xl text-[10px] font-black text-black uppercase tracking-[0.2em] shadow-[0_8px_20px_rgba(6,182,212,0.3)] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                {updating ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                    ĐANG CẬP NHẬT...
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4"><path d="M7 16l5 5m0 0l5-5m-5 5V3" /></svg>
+                    CẬP NHẬT NGAY
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {isUpToDate && (
+            <div className="flex items-center gap-2 text-green-400/50">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3"><path d="M5 13l4 4L19 7" /></svg>
+              <span className="text-[9px] font-black uppercase tracking-widest">Bạn đang sử dụng phiên bản mới nhất</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
