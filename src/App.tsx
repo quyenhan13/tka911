@@ -12,6 +12,7 @@ import DriverScreen from './screens/DriverScreen'
 import UniverseBackground from './components/UniverseBackground'
 import ErrorBoundary from './components/ErrorBoundary'
 import Logo from './components/Logo'
+import { CONFIG } from './config'
 import './index.css'
 
 interface User {
