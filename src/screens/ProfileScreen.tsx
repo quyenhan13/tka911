@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { getFavorites } from '../storage/favorites';
@@ -169,7 +170,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
               Trong
             </div>
           ) : (
-            activeItems.map((item) => (
+            activeItems.map((item: SavedMovie) => (
               <button
                 type="button"
                 key={item.slug}
