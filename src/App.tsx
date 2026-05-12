@@ -52,7 +52,7 @@ function App() {
 
       const initOTA = async () => {
         try {
-          const url = 'https://vteen.shop/api/update.php';
+          const url = `${CONFIG.API_BASE_URL}/update.php`;
           let info: any;
 
           if (Capacitor.isNativePlatform()) {
@@ -64,15 +64,21 @@ function App() {
           }
 
           if (info && info.status === 'success' && info.url) {
-            const last = localStorage.getItem('vteen_ota_version');
-            if (last !== info.version) {
+            const currentVersion = localStorage.getItem('vteen_ota_version') || CONFIG.VERSION;
+            if (info.version !== currentVersion) {
+              console.log(`[OTA] New version found: ${info.version}`);
               const bundle = await CapacitorUpdater.download({ url: info.url, version: info.version });
-              localStorage.setItem('vteen_ota_version', info.version);
               await CapacitorUpdater.set({ id: bundle.id });
+              localStorage.setItem('vteen_ota_version', info.version);
+              
+              // Tự động khởi động lại để áp dụng bản cập nhật
+              setTimeout(() => {
+                CapacitorUpdater.reload();
+              }, 1000);
             }
           }
         } catch (err) {
-          console.error('OTA Error:', err);
+          console.error('[OTA] Error:', err);
         }
       };
 
