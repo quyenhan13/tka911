@@ -271,6 +271,8 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
         setAccounts(unique(['all', ...cache.accounts]));
         if (cache.quota) setQuota(cache.quota);
         setLoading(false);
+      } else {
+        setFiles([]);
       }
 
       const savedUser = localStorage.getItem('vteen_user');
@@ -339,9 +341,11 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
         if (cache?.files.length && !forceRefresh && Date.now() - cache.savedAt < DRIVE_CACHE_MAX_AGE) {
           return;
         }
+        setFiles([]);
         setSyncError(failures.join(' / ') || 'Khong co du lieu Drive');
       }
     } catch {
+      setFiles([]);
       setSyncError('Khong the dong bo Drive');
     } finally {
       setLoading(false);
