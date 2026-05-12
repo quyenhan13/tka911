@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import Logo from '../components/Logo';
 import { CONFIG } from '../config';
 
@@ -19,20 +20,33 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setError(null);
 
     try {
-      const response = await fetch(`${CONFIG.API_BASE_URL}/login.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+      const url = `${CONFIG.API_BASE_URL}/login.php`;
+      const body = { username, password };
+      let result: any;
 
-      const result = await response.json();
+      if (Capacitor.isNativePlatform()) {
+        const response = await CapacitorHttp.post({
+          url,
+          data: body,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        result = response.data;
+      } else {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        result = await response.json();
+      }
 
       if (result.status === 'success') {
         onLoginSuccess(result.data);
       } else {
         setError(result.message || 'Sai tài khoản hoặc mật khẩu');
       }
-    } catch {
+    } catch (err) {
+      console.error('Login error:', err);
       setError('Kết nối máy chủ thất bại');
     } finally {
       setLoading(false);

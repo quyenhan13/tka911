@@ -429,19 +429,30 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
       </div>
 
       {/* Video Player Area */}
-      <div className="relative z-50 h-[32vh] min-h-[240px] max-h-[58vh] w-full shrink-0 bg-[#0a0a0a] shadow-2xl border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
+      <div className="relative z-50 h-[32vh] min-h-[240px] max-h-[58vh] w-full shrink-0 bg-[#0a0a0a] shadow-[0_25px_80px_rgba(0,0,0,0.8)] border-b border-white/5 flex flex-col items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-b from-black/40 via-transparent to-black/60 pointer-events-none z-10" />
+        
         {playerLoading ? (
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-[10px] text-primary/60 font-medium uppercase tracking-tighter">Đang kết nối server...</p>
+          <div className="flex flex-col items-center gap-4 z-20">
+            <div className="relative">
+              <div className="w-12 h-12 border-4 border-primary/20 rounded-full" />
+              <div className="absolute inset-0 w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+            <div className="flex flex-col items-center">
+              <p className="text-[10px] text-primary font-black uppercase tracking-[0.2em] animate-pulse">Đang thiết lập luồng</p>
+              <p className="text-[8px] text-white/30 font-bold uppercase mt-1">Cosmic Streaming v2.0</p>
+            </div>
           </div>
         ) : playerError ? (
-          <div className="p-6 text-center">
-            <p className="text-xs text-red-500 mb-4">{playerError}</p>
-            <button onClick={() => loadWebPlayer()} className="text-[10px] font-bold text-white bg-white/10 px-4 py-2 rounded-full active:scale-95 transition-all">THỬ LẠI</button>
+          <div className="p-8 text-center z-20">
+            <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-6 h-6 text-red-500"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+            <p className="text-xs text-white/80 font-black uppercase tracking-wider mb-6">{playerError}</p>
+            <button onClick={() => loadWebPlayer()} className="text-[10px] font-black text-black bg-primary px-8 py-3 rounded-2xl shadow-[0_10px_20px_rgba(6,182,212,0.3)] active:scale-95 transition-all">THỬ LẠI NGAY</button>
           </div>
         ) : webPlayer.videoSrc ? (
-          <div className="w-full h-full bg-black">
+          <div className="w-full h-full bg-black relative z-0">
             <video 
               src={webPlayer.videoSrc} 
               className="w-full h-full" 
@@ -454,8 +465,8 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           <iframe 
             key={`${currentEp?.episode}-${activeServer}-${webPlayer.src}`}
             src={webPlayer.src}
-            className="absolute inset-0 w-full h-full border-0"
-            style={{ backgroundColor: 'black', zIndex: 1 }}
+            className="absolute inset-0 w-full h-full border-0 z-0"
+            style={{ backgroundColor: 'black' }}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
@@ -465,17 +476,17 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
           <iframe 
             key={`${currentEp?.episode}-${activeServer}-html`}
             srcDoc={webPlayer.html}
-            className="absolute inset-0 w-full h-full border-0"
-            style={{ backgroundColor: 'black', zIndex: 1 }}
+            className="absolute inset-0 w-full h-full border-0 z-0"
+            style={{ backgroundColor: 'black' }}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
             title="Player"
           />
         ) : (
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-2 z-20">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span className="text-[10px] text-text-dim uppercase tracking-widest">Đang kết nối trình phát...</span>
+            <span className="text-[10px] text-white/30 font-black uppercase tracking-widest">Đang kết nối...</span>
           </div>
         )}
       </div>

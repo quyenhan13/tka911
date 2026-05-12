@@ -52,9 +52,18 @@ function App() {
 
       const initOTA = async () => {
         try {
-          const res = await fetch('https://vteen.shop/api/update.php');
-          const info = await res.json();
-          if (info.status === 'success' && info.url) {
+          const url = 'https://vteen.shop/api/update.php';
+          let info: any;
+
+          if (Capacitor.isNativePlatform()) {
+            const response = await CapacitorHttp.get({ url });
+            info = response.data;
+          } else {
+            const res = await fetch(url);
+            info = await res.json();
+          }
+
+          if (info && info.status === 'success' && info.url) {
             const last = localStorage.getItem('vteen_ota_version');
             if (last !== info.version) {
               const bundle = await CapacitorUpdater.download({ url: info.url, version: info.version });
@@ -62,7 +71,9 @@ function App() {
               await CapacitorUpdater.set({ id: bundle.id });
             }
           }
-        } catch {}
+        } catch (err) {
+          console.error('OTA Error:', err);
+        }
       };
 
       setTimeout(initOTA, 5000);

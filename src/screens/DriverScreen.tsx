@@ -39,6 +39,7 @@ interface DriverApiResponse {
   status: string;
   data?: DriveFile[];
   accounts?: string[];
+  auth_urls?: Record<string, string>;
   quota?: Quota;
   message?: string;
 }
@@ -46,6 +47,7 @@ interface DriverApiResponse {
 interface WebDriveState {
   files: DriveFile[];
   accounts: string[];
+  authUrls?: Record<string, string>;
 }
 
 interface DriveCache {
@@ -93,6 +95,18 @@ const parseWebDrive = (html: string): WebDriveState => {
       })
   );
 
+  const authUrls: Record<string, string> = {};
+  doc.querySelectorAll('.vtd-banner').forEach((banner) => {
+    const link = banner.querySelector<HTMLAnchorElement>('a.vtd-btn-reconnect');
+    if (link) {
+      try {
+        const url = new URL(link.href, CONFIG.SITE_BASE_URL);
+        const account = url.searchParams.get('connect');
+        if (account) authUrls[account] = url.toString();
+      } catch {}
+    }
+  });
+
   const files = Array.from(doc.querySelectorAll<HTMLElement>('.vtd-card'))
     .map((card): DriveFile | null => {
       const titleLink = card.querySelector<HTMLAnchorElement>('.vtd-title');
@@ -124,12 +138,13 @@ const parseWebDrive = (html: string): WebDriveState => {
     })
     .filter((file): file is DriveFile => Boolean(file));
 
-  return { files, accounts: accounts.length ? accounts : ['all'] };
+  return { files, accounts: accounts.length ? accounts : ['all'], authUrls };
 };
 
 const mergeFiles = (apiFiles: DriveFile[], webFiles: DriveFile[]) => {
   const seen = new Set<string>();
-  return [...webFiles, ...apiFiles].filter((file) => {
+  // Ưu tiên apiFiles trước để lấy metadata sạch hơn
+  return [...apiFiles, ...webFiles].filter((file) => {
     const key = file.short_code || file.webViewLink || `${file.account_source}:${file.id}:${file.name}`;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -200,6 +215,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [authUrls, setAuthUrls] = useState<Record<string, string>>({});
 
   const isAdmin = user?.role === 'admin';
 
@@ -234,7 +250,7 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       const savedUser = localStorage.getItem('vteen_user');
       const apiToken = savedUser ? JSON.parse(savedUser)?.api_token : null;
       const apiRequest = apiToken
-        ? fetch(`${CONFIG.API_BASE_URL}/driver_list.php?account=${activeAccount}&q=${encodeURIComponent(query)}&api_token=${apiToken}`)
+        ? fetch(`${CONFIG.API_BASE_URL}/driver_list.php?account=${activeAccount}&q=${encodeURIComponent(query)}&api_token=${apiToken}${forceRefresh ? '&refresh=1' : ''}`)
             .then((response) => response.json() as Promise<DriverApiResponse>)
         : Promise.resolve(null);
       const webRequest = fetchWebDriveHtml(activeAccount, query, forceRefresh).then(parseWebDrive);
@@ -251,6 +267,9 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
         setFiles(nextFiles);
         setAccounts(nextAccounts);
         if (nextQuota) setQuota(nextQuota);
+        if (Object.keys(webState.authUrls || {}).length > 0) {
+          setAuthUrls((prev) => ({ ...prev, ...webState.authUrls }));
+        }
         setLoading(false);
         writeDriveCache(activeAccount, query, {
           files: nextFiles,
@@ -266,7 +285,16 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
             apiFiles = (apiResponse.data || []).map((file) => ({ ...file, source: 'api' as const }));
             apiAccounts = apiResponse.accounts || [];
             nextQuota = apiResponse.quota || nextQuota;
+            if (apiResponse.auth_urls) {
+              setAuthUrls((prev) => ({ ...prev, ...apiResponse.auth_urls }));
+            }
           } else if (apiToken && apiResponse) {
+            if (apiResponse.message === 'Unauthorized') {
+              // User session expired, clear and reload
+              localStorage.removeItem('vteen_user');
+              window.location.reload();
+              return;
+            }
             failures.push(apiResponse.message || 'API Drive khong dong bo');
           }
         })
@@ -518,10 +546,50 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       </div>
 
       {syncError && (
-        <div className="mx-6 mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-[11px] font-bold text-red-100">
-          {syncError}
+        <div className="mx-6 mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-[11px] font-bold text-red-100 flex items-center justify-between">
+          <span>{syncError}</span>
+          <button onClick={() => fetchFiles(true)} className="text-red-400 underline uppercase tracking-tighter ml-2">Thử lại</button>
         </div>
       )}
+
+      {/* Reconnect Banners */}
+      <AnimatePresence>
+        {Object.entries(authUrls).map(([acc, url]) => (
+          <motion.div
+            key={`auth-${acc}`}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="mx-6 mt-4 overflow-hidden"
+          >
+            <div className="rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[11px] font-black text-white uppercase tracking-wider">Yêu cầu xác thực</p>
+                  <p className="text-[10px] font-bold text-white/50">Ổ đĩa <span className="text-primary uppercase">{acc}</span> cần kết nối lại.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  window.open(url, '_blank');
+                  // Xóa khỏi danh sách sau khi nhấn để tránh lộn xộn
+                  setAuthUrls(prev => {
+                    const next = { ...prev };
+                    delete next[acc];
+                    return next;
+                  });
+                }}
+                className="w-full bg-primary py-2.5 rounded-xl text-[10px] font-black text-black uppercase tracking-[0.2em] shadow-[0_5px_15px_rgba(6,182,212,0.3)] active:scale-[0.98] transition-transform"
+              >
+                Kết nối ngay
+              </button>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       {/* Files Grid - Premium UI */}
       <div className="flex-1 overflow-y-auto px-6 py-6 pb-40 no-scrollbar">

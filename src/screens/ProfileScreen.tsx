@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { getFavorites } from '../storage/favorites';
 import { getHistory } from '../storage/watchHistory';
 
@@ -36,10 +37,20 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
 
     const check = async () => {
       try {
-        const res = await fetch('https://vteen.shop/api/update.php');
-        const data = await res.json();
-        if (data.version) setLatestVersion(data.version);
-      } catch {
+        const url = 'https://vteen.shop/api/update.php';
+        let data: any;
+
+        if (Capacitor.isNativePlatform()) {
+          const response = await CapacitorHttp.get({ url });
+          data = response.data;
+        } else {
+          const res = await fetch(url);
+          data = await res.json();
+        }
+
+        if (data && data.version) setLatestVersion(data.version);
+      } catch (err) {
+        console.error('Update check error:', err);
         setLatestVersion('Lỗi kết nối');
       } finally {
         setChecking(false);
