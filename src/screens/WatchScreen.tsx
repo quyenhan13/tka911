@@ -377,10 +377,13 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
     let cancelled = false;
     const isCancelled = () => cancelled;
     
-    loadWebPlayer(isCancelled);
+    const timer = window.setTimeout(() => {
+      void loadWebPlayer(isCancelled);
+    }, 0);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [loadWebPlayer]);
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { getFavorites } from '../storage/favorites';
 import { getHistory } from '../storage/watchHistory';
 import { CONFIG } from '../config';
@@ -28,12 +28,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
   const [activeTab, setActiveTab] = useState('favorites');
   const activeItems = activeTab === 'favorites' ? favorites : history;
 
-  const [currentVersion, setCurrentVersion] = useState<string>(CONFIG.VERSION);
+  const [currentVersion, setCurrentVersion] = useState<string>(() => getCurrentOtaVersion());
   const [latestVersion, setLatestVersion] = useState<string>('');
   const [checking, setChecking] = useState(false);
   const [updating, setUpdating] = useState(false);
 
-  const checkUpdates = async (manual = false) => {
+  const checkUpdates = useCallback(async (manual = false) => {
     setChecking(true);
     try {
       const data = await fetchUpdateInfo(manual);
@@ -49,13 +49,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
     } finally {
       setChecking(false);
     }
-  };
+  }, [currentVersion]);
 
   useEffect(() => {
-    const saved = getCurrentOtaVersion();
-    setCurrentVersion(saved);
-    checkUpdates();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void checkUpdates();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [checkUpdates]);
 
   const handleUpdate = async () => {
     if (!hasNewerVersion(latestVersion, currentVersion)) return;

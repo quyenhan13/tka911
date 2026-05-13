@@ -51,7 +51,11 @@ function App() {
     let cancelled = false;
 
     if (isNative) {
-      try { CapacitorUpdater.notifyAppReady(); } catch {}
+      try {
+        CapacitorUpdater.notifyAppReady();
+      } catch {
+        // Native updater may be unavailable in browser-like shells.
+      }
 
       const initOTA = async () => {
         try {

@@ -65,6 +65,12 @@ const WEB_DRIVE_PATH = '/driver/index.php';
 const DRIVE_CACHE_PREFIX = 'vteen_drive_cache_v2';
 const DRIVE_CACHE_MAX_AGE = 1000 * 60 * 3;
 const DRIVE_REQUEST_TIMEOUT_MS = 10000;
+const GOOGLE_DRIVE_THUMBNAIL_HOSTS = new Set([
+  'drive.google.com',
+  'lh3.googleusercontent.com',
+  'work.fife.usercontent.google.com',
+  'accounts.google.com'
+]);
 
 const unique = (values: string[]) => Array.from(new Set(values.filter(Boolean)));
 
@@ -81,6 +87,74 @@ const inferMimeType = (name: string, hasThumbnail: boolean) => {
   if (['mp4', 'mov', 'mkv', 'webm'].includes(ext)) return 'video/mp4';
   if (['mp3', 'wav', 'm4a', 'flac'].includes(ext)) return 'audio/mpeg';
   return 'application/octet-stream';
+};
+
+const getDriveFileIdFromUrl = (rawUrl: string) => {
+  try {
+    const url = new URL(rawUrl, CONFIG.SITE_BASE_URL);
+    if (url.hostname === 'drive.google.com') {
+      const id = url.searchParams.get('id');
+      if (id) return id;
+    }
+
+    const driveFilePath = url.pathname.match(/\/d\/([^/?#]+)/);
+    if (driveFilePath?.[1]) return driveFilePath[1];
+
+    const proxyFilePath = url.pathname.match(/\/f\/([^/?#]+)/);
+    if (proxyFilePath?.[1]) return proxyFilePath[1];
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
+const isGoogleThumbnailUrl = (rawUrl: string) => {
+  try {
+    const url = new URL(rawUrl, CONFIG.SITE_BASE_URL);
+    return GOOGLE_DRIVE_THUMBNAIL_HOSTS.has(url.hostname);
+  } catch {
+    return false;
+  }
+};
+
+const getQuotaPercent = (quota: Quota) => {
+  const percent = Number(quota.percent);
+  if (!Number.isFinite(percent)) return 0;
+  return Math.max(0, Math.min(100, percent));
+};
+
+const formatBytes = (value: unknown) => {
+  const bytes = Number(value);
+  if (!Number.isFinite(bytes)) return String(value || '');
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let size = Math.max(0, bytes);
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  const precision = size >= 10 || unitIndex === 0 ? 0 : 2;
+  return `${size.toFixed(precision)} ${units[unitIndex]}`;
+};
+
+const normalizeQuota = (quota: Quota | null | undefined): Quota | null => {
+  if (!quota) return null;
+  const usageNumber = Number(quota.usage);
+  const limitNumber = Number(quota.limit);
+  const usageIsBytes = Number.isFinite(usageNumber);
+  const limitIsBytes = Number.isFinite(limitNumber);
+  const percent = Number.isFinite(Number(quota.percent))
+    ? getQuotaPercent(quota)
+    : usageIsBytes && limitIsBytes && limitNumber > 0
+      ? Math.max(0, Math.min(100, Number(((usageNumber / limitNumber) * 100).toFixed(1))))
+      : 0;
+
+  return {
+    usage: usageIsBytes ? formatBytes(usageNumber) : String(quota.usage || ''),
+    limit: limitIsBytes ? formatBytes(limitNumber) : String(quota.limit || ''),
+    percent
+  };
 };
 
 const parseWebDrive = (html: string): WebDriveState => {
@@ -104,7 +178,9 @@ const parseWebDrive = (html: string): WebDriveState => {
         const url = new URL(link.href, CONFIG.SITE_BASE_URL);
         const account = url.searchParams.get('connect');
         if (account) authUrls[account] = url.toString();
-      } catch {}
+      } catch {
+        // Ignore malformed reconnect links from the scraped Drive page.
+      }
     }
   });
 
@@ -167,6 +243,7 @@ const readDriveCache = (account: string, query: string): DriveCache | null => {
     if (!raw) return null;
     const cache = JSON.parse(raw) as DriveCache;
     if (!Array.isArray(cache.files) || !Array.isArray(cache.accounts)) return null;
+    cache.quota = normalizeQuota(cache.quota);
     return cache;
   } catch {
     return null;
@@ -242,8 +319,10 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [authUrls, setAuthUrls] = useState<Record<string, string>>({});
+  const fetchSequence = useRef(0);
 
   const isAdmin = user?.role === 'admin';
+  const quotaPercent = quota ? getQuotaPercent(quota) : 0;
 
   const handleDelete = async (fileId: string, account: string) => {
     if (!window.confirm('Bạn có chắc muốn xóa tệp này?')) return;
@@ -261,12 +340,15 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   };
 
   const fetchFiles = useCallback(async (forceRefresh = false) => {
+    const requestId = fetchSequence.current + 1;
+    fetchSequence.current = requestId;
     setLoading(true);
     setSyncError(null);
     try {
       const query = submittedQuery.trim();
       const cache = readDriveCache(activeAccount, query);
       if (cache && !forceRefresh) {
+        if (requestId !== fetchSequence.current) return;
         setFiles(cache.files);
         setAccounts(unique(['all', ...cache.accounts]));
         if (cache.quota) setQuota(cache.quota);
@@ -287,31 +369,12 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
       let webState: WebDriveState = { files: [], accounts: ['all'] };
       let nextQuota = cache?.quota || null;
 
-      const applyDriveState = () => {
-        const nextAccounts = unique(['all', ...webState.accounts, ...apiAccounts]);
-        const nextFiles = mergeFiles(apiFiles, webState.files);
-        setAccounts(nextAccounts);
-        if (Object.keys(webState.authUrls || {}).length > 0) {
-          setAuthUrls((prev) => ({ ...prev, ...webState.authUrls }));
-        }
-        if (nextFiles.length === 0) return;
-        setFiles(nextFiles);
-        if (nextQuota) setQuota(nextQuota);
-        setLoading(false);
-        writeDriveCache(activeAccount, query, {
-          files: nextFiles,
-          accounts: nextAccounts,
-          quota: nextQuota,
-          savedAt: Date.now()
-        });
-      };
-
       const apiSync = apiRequest
         .then((apiResponse) => {
           if (apiResponse?.status === 'success') {
             apiFiles = (apiResponse.data || []).map((file) => ({ ...file, source: 'api' as const }));
             apiAccounts = apiResponse.accounts || [];
-            nextQuota = apiResponse.quota || nextQuota;
+            nextQuota = normalizeQuota(apiResponse.quota) || nextQuota;
             if (apiResponse.auth_urls) {
               setAuthUrls((prev) => ({ ...prev, ...apiResponse.auth_urls }));
             }
@@ -325,30 +388,46 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
             failures.push(apiResponse.message || 'API Drive khong dong bo');
           }
         })
-        .catch(() => failures.push('API Drive khong phan hoi'))
-        .finally(applyDriveState);
+        .catch(() => failures.push('API Drive khong phan hoi'));
 
       const webSync = webRequest
         .then((state) => {
           webState = state;
         })
-        .catch(() => failures.push('Web Drive khong phan hoi'))
-        .finally(applyDriveState);
+        .catch(() => failures.push('Web Drive khong phan hoi'));
 
       await Promise.allSettled([apiSync, webSync]);
+      if (requestId !== fetchSequence.current) return;
 
-      if (apiFiles.length === 0 && webState.files.length === 0) {
+      const nextAccounts = unique(['all', ...webState.accounts, ...apiAccounts]);
+      const nextFiles = mergeFiles(apiFiles, webState.files);
+      setAccounts(nextAccounts);
+      if (Object.keys(webState.authUrls || {}).length > 0) {
+        setAuthUrls((prev) => ({ ...prev, ...webState.authUrls }));
+      }
+      if (nextQuota) setQuota(nextQuota);
+
+      if (nextFiles.length === 0) {
         if (cache?.files.length && !forceRefresh && Date.now() - cache.savedAt < DRIVE_CACHE_MAX_AGE) {
           return;
         }
         setFiles([]);
         setSyncError(failures.join(' / ') || 'Khong co du lieu Drive');
+      } else {
+        setFiles(nextFiles);
+        writeDriveCache(activeAccount, query, {
+          files: nextFiles,
+          accounts: nextAccounts,
+          quota: nextQuota,
+          savedAt: Date.now()
+        });
       }
     } catch {
+      if (requestId !== fetchSequence.current) return;
       setFiles([]);
       setSyncError('Khong the dong bo Drive');
     } finally {
-      setLoading(false);
+      if (requestId === fetchSequence.current) setLoading(false);
     }
   }, [activeAccount, submittedQuery]);
 
@@ -405,10 +484,19 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
   };
 
   const formatThumbnail = (file: DriveFile) => {
-    if (file.source === 'web') return file.thumbnailLink || null;
-    if (!file.thumbnailLink) return null;
-    // Sử dụng link thumbnail chính thức của Google Drive qua ID để ổn định hơn
-    return `https://drive.google.com/thumbnail?id=${file.id}&sz=w400`;
+    const sourceUrl = file.thumbnailLink || file.webContentLink || file.webViewLink || '';
+    const account = file.account_source || 'drive1';
+    const driveFileId = getDriveFileIdFromUrl(sourceUrl) || (file.source === 'api' ? file.id : null);
+
+    const isGoogleThumbnail = sourceUrl ? isGoogleThumbnailUrl(sourceUrl) : false;
+
+    if (driveFileId && (!file.thumbnailLink || isGoogleThumbnail)) {
+      return `${CONFIG.SITE_BASE_URL}/f/${encodeURIComponent(driveFileId)}/${encodeURIComponent(account)}`;
+    }
+
+    if (isGoogleThumbnail) return null;
+
+    return file.thumbnailLink || null;
   };
 
   const submitSearch = (event?: React.FormEvent, forceRefresh = false) => {
@@ -457,18 +545,18 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
             <div className="flex flex-col flex-1 mr-4">
               <div className="flex justify-between items-center mb-1.5">
                 <span className="text-[8px] font-black text-white/30 uppercase tracking-tighter">BỘ NHỚ TRỰC TUYẾN</span>
-                <span className="text-[9px] font-black text-primary/80">{quota.usage} / {quota.limit} ({quota.percent}%)</span>
+                <span className="text-[9px] font-black text-primary/80">{quota.usage} / {quota.limit} ({quotaPercent}%)</span>
               </div>
               <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${quota.percent}%` }}
+                  animate={{ width: `${quotaPercent}%` }}
                   className="h-full bg-gradient-to-r from-primary to-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.6)]"
                 />
               </div>
             </div>
             <div className="w-10 h-10 rounded-full border-2 border-primary/20 flex items-center justify-center text-[11px] font-black text-primary">
-              {Math.round(quota.percent)}
+              {Math.round(quotaPercent)}
             </div>
           </div>
         )}
@@ -495,43 +583,6 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
             </button>
           ))}
         </div>
-        {isAdmin && (
-          <>
-            <input
-              type="file"
-              id="token-upload"
-              className="hidden"
-              accept=".json"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const formData = new FormData();
-                formData.append('token_upload', file);
-                setLoading(true);
-                try {
-                  const savedUser = localStorage.getItem('vteen_user');
-                  const apiToken = JSON.parse(savedUser || '{}')?.api_token;
-                  await withDriveTimeout(fetch(`${CONFIG.API_BASE_URL}/driver_list.php?api_token=${apiToken}`, {
-                    method: 'POST',
-                    body: formData
-                  }));
-                  fetchFiles(true);
-                } catch (err) {
-                  console.error('Upload token error:', err);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-            />
-            <button
-              onClick={() => document.getElementById('token-upload')?.click()}
-              className="w-12 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-white/20 hover:bg-primary/20 hover:text-primary transition-all active:scale-90"
-              title="Thêm ổ đĩa mới"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-5 h-5"><path d="M12 5v14M5 12h14" /></svg>
-            </button>
-          </>
-        )}
       </div>
 
       {/* Search Bar - Cosmic Pill Style */}
@@ -539,6 +590,8 @@ const DriverScreen: React.FC<DriverProps> = ({ user }) => {
         <form onSubmit={submitSearch} className="relative group">
           <input
             type="text"
+            id="drive-search"
+            name="drive-search"
             placeholder="Tìm kiếm tệp trong vũ trụ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -731,6 +784,7 @@ const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: FileView
   if (!file) return null;
   const info = getFileIcon(file.mimeType);
   const isImg = file.mimeType.includes('image');
+  const thumbnailUrl = formatThumbnail(file);
   const shareLink = `https://vteen.shop/s/${file.short_code}`;
 
   const copyToClipboard = () => {
@@ -763,9 +817,9 @@ const FileViewModal = ({ file, onClose, formatThumbnail, getFileIcon }: FileView
           <div className="p-8 pt-16 flex flex-col items-center text-center">
             {/* Preview Box */}
             <div className="w-full aspect-video bg-black/40 rounded-[2rem] border border-white/5 flex items-center justify-center overflow-hidden mb-8 relative group">
-              {isImg ? (
+              {isImg && thumbnailUrl ? (
                 <img
-                  src={formatThumbnail(file) ?? undefined}
+                  src={thumbnailUrl}
                   className="w-full h-full object-contain p-2"
                   alt=""
                 />
@@ -842,6 +896,7 @@ interface FileCardProps {
 const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDelete, onView }: FileCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+  const thumbnailUrl = formatThumbnail(file);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!cardRef.current) return;
@@ -907,10 +962,10 @@ const FileCard = ({ file, info, isGuest, isAdmin, index, formatThumbnail, onDele
 
       {/* Thumbnail Area with Glass Overlay */}
       <div className="aspect-[4/3] w-full bg-[#0a0a0c] flex items-center justify-center overflow-hidden relative">
-        {file.thumbnailLink ? (
+        {thumbnailUrl ? (
           <>
             <img
-              src={formatThumbnail(file) ?? undefined}
+              src={thumbnailUrl}
               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-115"
               alt=""
             />

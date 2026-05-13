@@ -48,9 +48,9 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
 
   // Cập nhật lịch sử xem khi người dùng quay lại từ trình phát
   useEffect(() => {
-    if (!isWatching) {
-      setHistory(getHistory());
-    }
+    if (isWatching) return;
+    const timer = window.setTimeout(() => setHistory(getHistory()), 0);
+    return () => window.clearTimeout(timer);
   }, [isWatching]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('Tất cả');
@@ -97,9 +97,9 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
       } else {
         setError(result?.message || 'Không tải được danh sách phim');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Fetch error:', err);
-      if (err.name === 'AbortError') {
+      if (err instanceof Error && err.name === 'AbortError') {
         setError('Yêu cầu hết thời gian, vui lòng thử lại');
       } else {
         setError('Kết nối máy chủ thất bại');
@@ -111,7 +111,10 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
   }, []);
 
   useEffect(() => {
-    fetchMovies(1);
+    const timer = window.setTimeout(() => {
+      void fetchMovies(1);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [fetchMovies]);
 
   const filteredMovies = useMemo(() => {
@@ -152,7 +155,9 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
         <div className="relative mb-4 group">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-primary transition-colors"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           <input 
-            type="text" 
+            type="text"
+            id="movie-search"
+            name="movie-search"
             placeholder="Tìm phim trong vũ trụ..." 
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 

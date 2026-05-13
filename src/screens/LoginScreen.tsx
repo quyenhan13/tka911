@@ -8,6 +8,12 @@ interface LoginScreenProps {
   onLoginSuccess: (userData: unknown) => void;
 }
 
+interface LoginResponse {
+  status?: string;
+  data?: unknown;
+  message?: string;
+}
+
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +28,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     try {
       const url = `${CONFIG.API_BASE_URL}/login.php`;
       const body = { username, password };
-      let result: any;
+      let result: LoginResponse;
 
       if (Capacitor.isNativePlatform()) {
         const response = await CapacitorHttp.post({
@@ -84,6 +90,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             <div className="relative">
               <input
                 type="text"
+                name="username"
+                autoComplete="username"
                 placeholder="Tên đăng nhập"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -95,6 +103,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             <div className="relative">
               <input
                 type="password"
+                name="password"
+                autoComplete="current-password"
                 placeholder="Mật khẩu"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
