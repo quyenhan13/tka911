@@ -3,6 +3,8 @@ import { getFavorites } from '../storage/favorites';
 import { getHistory } from '../storage/watchHistory';
 import { CONFIG } from '../config';
 import { fetchUpdateInfo, getCurrentOtaVersion, hasNewerVersion, installUpdate, reloadForUpdate } from '../ota';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
 interface User {
   display_name?: string;
@@ -17,7 +19,7 @@ interface SavedMovie {
 }
 
 interface ProfileScreenProps {
-  user: User;
+  user: User & { api_token: string };
   onLogout: () => void;
   onWatch: (slug: string) => void;
 }
@@ -32,6 +34,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
   const [latestVersion, setLatestVersion] = useState<string>('');
   const [checking, setChecking] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  // Change Password State
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const checkUpdates = useCallback(async (manual = false) => {
     setChecking(true);
@@ -78,6 +86,65 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
       alert('Cap nhat that bai, vui long thu lai sau.');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordForm.new !== passwordForm.confirm) {
+      setPasswordError('Mật khẩu xác nhận không khớp');
+      return;
+    }
+    if (passwordForm.new.length < 6) {
+      setPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự');
+      return;
+    }
+
+    setPasswordLoading(true);
+    setPasswordError(null);
+
+    try {
+      const url = `${CONFIG.API_BASE_URL}/change_password.php`;
+      const body = { 
+        current_password: passwordForm.current, 
+        new_password: passwordForm.new 
+      };
+      
+      let result;
+      if (Capacitor.isNativePlatform()) {
+        const response = await CapacitorHttp.post({
+          url,
+          data: body,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.api_token}`
+          }
+        });
+        result = response.data;
+      } else {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.api_token}`
+          },
+          body: JSON.stringify(body),
+        });
+        result = await response.json();
+      }
+
+      if (result.status === 'success') {
+        alert('Đổi mật khẩu thành công!');
+        setShowPasswordModal(false);
+        setPasswordForm({ current: '', new: '', confirm: '' });
+      } else {
+        setPasswordError(result.message || 'Có lỗi xảy ra');
+      }
+    } catch (err) {
+      console.error('Change password error:', err);
+      setPasswordError('Kết nối máy chủ thất bại');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -170,7 +237,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
         </div>
       </div>
 
-      <div className="mt-4 px-6">
+      <div className="mt-4 px-6 flex flex-col gap-3">
+        <button
+          onClick={() => setShowPasswordModal(true)}
+          className="w-full rounded-2xl border border-primary/25 bg-primary/8 py-4 text-xs font-black uppercase tracking-[0.2em] text-primary transition-all active:bg-primary/15"
+        >
+          Đổi mật khẩu
+        </button>
         <button
           onClick={onLogout}
           className="w-full rounded-2xl border border-red-500/25 bg-red-500/8 py-4 text-xs font-black uppercase tracking-[0.2em] text-red-400 transition-all active:bg-red-500/15"
@@ -238,7 +311,100 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
         </div>
       </div>
     </div>
-  );
+
+      <AnimatePresence>
+        {showPasswordModal && (
+          <div className="fixed inset-0 z-[2000] flex items-end justify-center px-4 pb-10 sm:items-center sm:p-0">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPasswordModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0a0c10] p-8 shadow-2xl sm:m-4"
+            >
+              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
+              
+              <div className="relative mb-8 text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-6 w-6 text-primary">
+                    <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-black text-white">Đổi mật khẩu</h3>
+                <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-text-dim">Cập nhật bảo mật tài khoản</p>
+              </div>
+
+              <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="ml-4 text-[9px] font-black uppercase tracking-widest text-white/40">Mật khẩu hiện tại</label>
+                  <input
+                    type="password"
+                    required
+                    value={passwordForm.current}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                    className="w-full rounded-2xl border border-white/5 bg-white/5 px-6 py-4 text-sm text-white placeholder:text-white/20 focus:border-primary/30 focus:bg-white/10 focus:outline-none"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="ml-4 text-[9px] font-black uppercase tracking-widest text-white/40">Mật khẩu mới</label>
+                  <input
+                    type="password"
+                    required
+                    value={passwordForm.new}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })}
+                    className="w-full rounded-2xl border border-white/5 bg-white/5 px-6 py-4 text-sm text-white placeholder:text-white/20 focus:border-primary/30 focus:bg-white/10 focus:outline-none"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="ml-4 text-[9px] font-black uppercase tracking-widest text-white/40">Xác nhận mật khẩu mới</label>
+                  <input
+                    type="password"
+                    required
+                    value={passwordForm.confirm}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                    className="w-full rounded-2xl border border-white/5 bg-white/5 px-6 py-4 text-sm text-white placeholder:text-white/20 focus:border-primary/30 focus:bg-white/10 focus:outline-none"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                {passwordError && (
+                  <p className="mt-2 text-center text-[10px] font-bold text-red-400">{passwordError}</p>
+                )}
+
+                <div className="mt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordModal(false)}
+                    className="flex-1 rounded-2xl border border-white/10 bg-white/5 py-4 text-[10px] font-black uppercase tracking-widest text-white"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={passwordLoading}
+                    className="flex-[2] rounded-2xl bg-primary py-4 text-[10px] font-black uppercase tracking-[0.2em] text-black shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    {passwordLoading ? 'Đang xử lý...' : 'Xác nhận đổi'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    );
 };
 
 export default ProfileScreen;
