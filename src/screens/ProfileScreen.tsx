@@ -151,7 +151,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
   const isUpToDate = latestVersion && !hasNewerVersion(latestVersion, currentVersion);
 
   return (
-    <div className="flex flex-col gap-6 pb-10">
+    <>
+      <div className="flex flex-col gap-6 pb-10">
       <div
         className="relative overflow-hidden border-b border-white/10 bg-[#05070a]/35 px-6 pb-6 backdrop-blur-2xl"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 2rem)', minHeight: 'calc(env(safe-area-inset-top) + 5rem)' }}
@@ -404,7 +405,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
           </div>
         )}
       </AnimatePresence>
-    );
+    </>
+  );
 };
 
 export default ProfileScreen;
