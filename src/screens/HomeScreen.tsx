@@ -68,6 +68,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
     const timeoutId = setTimeout(() => abortController.abort(), 10000); // 10s timeout
 
     try {
+      // Revert to original URL as server might not support &category param
       const url = `${CONFIG.API_BASE_URL}/movies.php?page=${pageNum}&limit=24&nocache=1`;
       
       let result: MoviesResponse;
@@ -92,8 +93,15 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
       if (result && result.status === 'success' && Array.isArray(result.data)) {
         setMovies(result.data);
         setTotalPages(Math.max(1, Number(result.total_pages) || 1));
-        setPage(Math.max(1, Number(result.page) || pageNum));
+        // Prioritize pageNum passed to function to avoid jumps if API returns wrong page index
+        setPage(pageNum); 
         if (result.categories) setCategories(['Tất cả', ...result.categories]);
+        
+        // Auto-scroll to top of the scrollable container
+        const scrollContainer = document.querySelector('.overflow-y-auto');
+        if (scrollContainer) {
+          scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       } else {
         setError(result?.message || 'Không tải được danh sách phim');
       }
@@ -108,13 +116,11 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
       clearTimeout(timeoutId);
       setLoading(false);
     }
-  }, []);
+  }, []); // Remove activeCategory dependency to prevent re-creation and unexpected jumps
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void fetchMovies(1);
-    }, 0);
-    return () => window.clearTimeout(timer);
+    // Only fetch page 1 on mount
+    void fetchMovies(1);
   }, [fetchMovies]);
 
   const filteredMovies = useMemo(() => {
@@ -167,7 +173,17 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
 
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
           {categories.map((cat) => (
-            <button key={cat} onClick={() => { setActiveCategory(cat); setFeaturedIndex(0); }} className={`whitespace-nowrap px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-primary text-black' : 'bg-white/5 text-white/30'}`}>{cat}</button>
+            <button 
+              key={cat} 
+              onClick={() => { 
+                setActiveCategory(cat); 
+                setFeaturedIndex(0);
+                void fetchMovies(1); // Force reset to page 1 when switching categories
+              }} 
+              className={`whitespace-nowrap px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-primary text-black' : 'bg-white/5 text-white/30'}`}
+            >
+              {cat}
+            </button>
           ))}
         </div>
       </header>
