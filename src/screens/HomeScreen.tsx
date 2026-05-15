@@ -269,19 +269,19 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
           </div>
         )}
 
-        {totalPages > 1 && !deferredSearch && (
+        {Number(totalPages) > 1 && !deferredSearch && (
           <div className="flex justify-center items-center gap-2 mt-12 overflow-x-auto no-scrollbar pb-4">
-            <button onClick={() => fetchMovies(page-1)} disabled={page === 1} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M15 19l-7-7 7-7"/></svg></button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum = page - 2 + i;
-              if (page <= 2) pageNum = i + 1;
-              if (page >= totalPages - 1) pageNum = totalPages - 4 + i;
-              if (pageNum < 1 || pageNum > totalPages) return null;
+            <button onClick={() => fetchMovies(Number(page) - 1)} disabled={Number(page) === 1} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M15 19l-7-7 7-7"/></svg></button>
+            {Array.from({ length: Math.min(5, Number(totalPages)) }, (_, i) => {
+              let pageNum = Number(page) - 2 + i;
+              if (Number(page) <= 2) pageNum = i + 1;
+              if (Number(page) >= Number(totalPages) - 1) pageNum = Number(totalPages) - 4 + i;
+              if (pageNum < 1 || pageNum > Number(totalPages)) return null;
               return (
-                <button key={pageNum} onClick={() => fetchMovies(pageNum)} className={`w-10 h-10 rounded-xl text-[10px] font-black transition-all ${page === pageNum ? 'bg-primary text-black' : 'bg-white/5 text-white/30'}`}>{pageNum}</button>
+                <button key={pageNum} onClick={() => fetchMovies(pageNum)} className={`w-10 h-10 rounded-xl text-[10px] font-black transition-all ${Number(page) === pageNum ? 'bg-primary text-black' : 'bg-white/5 text-white/30'}`}>{pageNum}</button>
               );
             })}
-            <button onClick={() => fetchMovies(page+1)} disabled={page === totalPages} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M9 5l7 7-7 7"/></svg></button>
+            <button onClick={() => fetchMovies(Number(page) + 1)} disabled={Number(page) === Number(totalPages)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M9 5l7 7-7 7"/></svg></button>
           </div>
         )}
       </section>
