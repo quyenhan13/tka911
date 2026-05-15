@@ -92,7 +92,12 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
 
       if (result && result.status === 'success' && Array.isArray(result.data)) {
         setMovies(result.data);
-        setTotalPages(Math.max(1, Number(result.total_pages) || 1));
+        
+        // Fix: Only update totalPages if the API provides it, otherwise keep the current value
+        if (result.total_pages !== undefined) {
+          setTotalPages(Math.max(1, Number(result.total_pages)));
+        }
+        
         // Prioritize pageNum passed to function to avoid jumps if API returns wrong page index
         setPage(pageNum); 
         if (result.categories) setCategories(['Tất cả', ...result.categories]);
