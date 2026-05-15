@@ -272,15 +272,25 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
         {Number(totalPages) > 1 && !deferredSearch && (
           <div className="flex justify-center items-center gap-2 mt-12 overflow-x-auto no-scrollbar pb-4">
             <button onClick={() => fetchMovies(Number(page) - 1)} disabled={Number(page) === 1} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M15 19l-7-7 7-7"/></svg></button>
-            {Array.from({ length: Math.min(5, Number(totalPages)) }, (_, i) => {
-              let pageNum = Number(page) - 2 + i;
-              if (Number(page) <= 2) pageNum = i + 1;
-              if (Number(page) >= Number(totalPages) - 1) pageNum = Number(totalPages) - 4 + i;
-              if (pageNum < 1 || pageNum > Number(totalPages)) return null;
-              return (
-                <button key={pageNum} onClick={() => fetchMovies(pageNum)} className={`w-10 h-10 rounded-xl text-[10px] font-black transition-all ${Number(page) === pageNum ? 'bg-primary text-black' : 'bg-white/5 text-white/30'}`}>{pageNum}</button>
-              );
-            })}
+            {Array.from({ length: Number(totalPages) }, (_, i) => i + 1)
+              .filter(p => {
+                const total = Number(totalPages);
+                const current = Number(page);
+                if (total <= 5) return true;
+                if (current <= 3) return p <= 5;
+                if (current >= total - 2) return p > total - 5;
+                return Math.abs(p - current) <= 2;
+              })
+              .map(pageNum => (
+                <button 
+                  key={pageNum} 
+                  onClick={() => fetchMovies(pageNum)} 
+                  className={`w-10 h-10 rounded-xl text-[10px] font-black transition-all ${Number(page) === pageNum ? 'bg-primary text-black shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}
+                >
+                  {pageNum}
+                </button>
+              ))
+            }
             <button onClick={() => fetchMovies(Number(page) + 1)} disabled={Number(page) === Number(totalPages)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M9 5l7 7-7 7"/></svg></button>
           </div>
         )}
