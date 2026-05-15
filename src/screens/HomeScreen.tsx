@@ -93,9 +93,11 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
       if (result && result.status === 'success' && Array.isArray(result.data)) {
         setMovies(result.data);
         
-        // Fix: Only update totalPages if the API provides it, otherwise keep the current value
-        if (result.total_pages !== undefined) {
-          setTotalPages(Math.max(1, Number(result.total_pages)));
+        // Fix: Only update totalPages if the API provides a valid number > 1
+        // This prevents the pagination bar from disappearing on subsequent pages
+        const newTotalPages = Number(result.total_pages);
+        if (!isNaN(newTotalPages) && newTotalPages > 1) {
+          setTotalPages(newTotalPages);
         }
         
         // Prioritize pageNum passed to function to avoid jumps if API returns wrong page index
