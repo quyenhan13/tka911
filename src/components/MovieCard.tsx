@@ -1,4 +1,5 @@
 import React from 'react';
+import { getPosterSrc, handlePosterError } from '../utils/poster';
 
 interface MovieCardProps {
   title: string;
@@ -8,8 +9,6 @@ interface MovieCardProps {
   isSeries?: boolean;
   onClick?: () => void;
 }
-
-const fallbackPoster = 'https://placehold.co/300x450/0b0f17/64748b?text=VTeen';
 
 const MovieCard: React.FC<MovieCardProps> = ({
   title,
@@ -27,13 +26,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-[1.15rem] border border-white/10 bg-[#070b12] shadow-[0_18px_42px_rgba(0,0,0,0.34)] transition duration-300 group-hover:border-primary/45 group-hover:shadow-[0_20px_48px_rgba(0,0,0,0.42),0_0_24px_rgba(6,182,212,0.12)]">
         <img
-          src={poster || fallbackPoster}
+          src={getPosterSrc(poster)}
           alt={title}
           className="h-full w-full object-cover transition duration-700 group-hover:scale-106"
           loading="lazy"
-          onError={(event) => {
-            event.currentTarget.src = fallbackPoster;
-          }}
+          onError={(event) => handlePosterError(event, poster)}
         />
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/18 to-black/10 opacity-95" />

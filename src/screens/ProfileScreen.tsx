@@ -5,6 +5,7 @@ import { CONFIG } from '../config';
 import { fetchUpdateInfo, getCurrentOtaVersion, hasNewerVersion, installUpdate, reloadForUpdate } from '../ota';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { getPosterSrc, handlePosterError } from '../utils/poster';
 
 interface User {
   display_name?: string;
@@ -263,7 +264,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
                 className="group cursor-pointer text-left active:scale-95"
               >
                 <div className="relative aspect-[2/3] overflow-hidden rounded-[1rem] border border-white/10 bg-card shadow-xl">
-                  <img src={item.poster} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" alt="" />
+                  <img src={getPosterSrc(item.poster)} onError={(event) => handlePosterError(event, item.poster)} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" alt="" />
                   <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
                   {activeTab === 'history' && item.lastEpisode && (
                     <span className="absolute bottom-2 left-2 rounded-md bg-primary px-1.5 py-0.5 text-[8px] font-black uppercase text-black">Tap {item.lastEpisode}</span>

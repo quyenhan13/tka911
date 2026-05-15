@@ -6,6 +6,7 @@ import Logo from '../components/Logo';
 import MovieCard from '../components/MovieCard';
 import { getHistory } from '../storage/watchHistory';
 import { CONFIG } from '../config';
+import { getPosterSrc, handlePosterError } from '../utils/poster';
 
 interface Movie {
   display_name: string;
@@ -37,8 +38,6 @@ interface HomeProps {
   onWatch: (slug: string) => void;
   isWatching?: boolean;
 }
-
-const fallbackPoster = 'https://placehold.co/300x450/0b0f17/64748b?text=VTeen';
 
 const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -212,7 +211,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
       {featuredMovie && (
         <section className="px-5">
           <motion.button key={featuredMovie.slug} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={() => onWatch(featuredMovie.slug)} className="relative w-full h-[15rem] rounded-[2rem] overflow-hidden border border-white/5 bg-[#0a0f18] shadow-2xl active:scale-[0.98] transition-transform">
-            <img src={featuredMovie.poster_url || fallbackPoster} className="absolute inset-0 w-full h-full object-cover opacity-40" alt="" />
+            <img src={getPosterSrc(featuredMovie.poster_url)} onError={(event) => handlePosterError(event, featuredMovie.poster_url)} className="absolute inset-0 w-full h-full object-cover opacity-40" alt="" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#05070a] via-transparent to-transparent" />
             <div className="absolute inset-0 p-6 flex flex-col justify-end">
               <div className="flex gap-2 mb-2">
@@ -232,7 +231,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
             {history.slice(0, 10).map((item) => (
               <button key={item.slug} onClick={() => onWatch(item.slug)} className="w-24 shrink-0 text-left active:scale-95 transition-transform">
                 <div className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-white/5 border border-white/10">
-                  <img src={item.poster || fallbackPoster} className="w-full h-full object-cover opacity-80" alt="" />
+                  <img src={getPosterSrc(item.poster)} onError={(event) => handlePosterError(event, item.poster)} className="w-full h-full object-cover opacity-80" alt="" />
                   <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black to-transparent">
                     <span className="text-primary text-[7px] font-black uppercase">Tập {item.lastEpisode}</span>
                   </div>
