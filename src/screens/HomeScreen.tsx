@@ -61,15 +61,26 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
 
   const deferredSearch = useDeferredValue(searchTerm);
 
-  const fetchMovies = useCallback(async (pageNum: number) => {
+  const fetchMovies = useCallback(async (pageNum: number, query = '') => {
     setLoading(true);
     setError(null);
     const abortController = new AbortController();
     const timeoutId = setTimeout(() => abortController.abort(), 10000); // 10s timeout
+    const cleanQuery = query.trim();
 
     try {
-      // Revert to original URL as server might not support &category param
-      const url = `${CONFIG.API_BASE_URL}/movies.php?page=${pageNum}&limit=24&nocache=1`;
+      const params = new URLSearchParams({
+        page: String(pageNum),
+        limit: '24',
+        nocache: String(Date.now())
+      });
+
+      if (cleanQuery) {
+        params.set('q', cleanQuery);
+      }
+
+      // Category stays local; search must go to the server so newly uploaded movies can be found.
+      const url = `${CONFIG.API_BASE_URL}/movies.php?${params.toString()}`;
       
       let result: MoviesResponse;
 
@@ -77,7 +88,11 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
         const response = await CapacitorHttp.get({ 
           url, 
           params: {},
-          headers: { 'Accept': 'application/json' },
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
           connectTimeout: 10000,
           readTimeout: 10000
         });
@@ -102,7 +117,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
         
         // Prioritize pageNum passed to function to avoid jumps if API returns wrong page index
         setPage(pageNum); 
-        if (result.categories) setCategories(['Tất cả', ...result.categories]);
+        if (!cleanQuery && result.categories) setCategories(['Tất cả', ...result.categories]);
         
         // Auto-scroll to top of the scrollable container
         const scrollContainer = document.querySelector('.overflow-y-auto');
@@ -123,24 +138,23 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
       clearTimeout(timeoutId);
       setLoading(false);
     }
-  }, []); // Remove activeCategory dependency to prevent re-creation and unexpected jumps
+  }, []); // Keep query as an explicit argument for pagination, refresh, and search.
 
   useEffect(() => {
-    // Only fetch page 1 on mount
-    void fetchMovies(1);
-  }, [fetchMovies]);
+    const timer = window.setTimeout(() => {
+      void fetchMovies(1, deferredSearch);
+    }, deferredSearch.trim() ? 300 : 0);
+
+    return () => window.clearTimeout(timer);
+  }, [deferredSearch, fetchMovies]);
 
   const filteredMovies = useMemo(() => {
     let result = movies;
     if (activeCategory !== 'Tất cả') {
       result = result.filter(m => m.category === activeCategory);
     }
-    const keyword = deferredSearch.trim().toLowerCase();
-    if (keyword) {
-      result = result.filter((m) => m.display_name.toLowerCase().includes(keyword));
-    }
     return result;
-  }, [movies, deferredSearch, activeCategory]);
+  }, [movies, activeCategory]);
 
   const featuredMovies = deferredSearch.trim() || activeCategory !== 'Tất cả' ? [] : movies.slice(0, 5);
   const activeFeaturedIndex = featuredMovies.length ? featuredIndex % featuredMovies.length : 0;
@@ -158,7 +172,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
         <div className="flex items-center justify-between gap-4 mb-4">
           <Logo size="sm" />
           <div className="flex items-center gap-3">
-            <button onClick={() => fetchMovies(1)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/30 active:scale-90">
+            <button onClick={() => fetchMovies(1, deferredSearch)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/30 active:scale-90">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}><path d="M4 4v6h6M20 20v-6h-6M5 19a8 8 0 0013-3M19 5a8 8 0 00-13 3" /></svg>
             </button>
             <Avatar size={36} isAdmin />
@@ -185,7 +199,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
               onClick={() => { 
                 setActiveCategory(cat); 
                 setFeaturedIndex(0);
-                void fetchMovies(1); // Force reset to page 1 when switching categories
+                void fetchMovies(1, deferredSearch); // Force reset to page 1 when switching categories
               }} 
               className={`whitespace-nowrap px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-primary text-black' : 'bg-white/5 text-white/30'}`}
             >
@@ -249,7 +263,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
             <p className="text-sm text-white/80 font-black uppercase tracking-widest mb-2">Kết nối thất bại</p>
             <p className="text-[10px] text-white/40 font-bold mb-8 px-4">{error}</p>
             <button
-              onClick={() => fetchMovies(page)}
+              onClick={() => fetchMovies(page, deferredSearch)}
               className="px-8 py-3 bg-primary text-black text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-[0_10px_25px_rgba(6,182,212,0.3)] active:scale-95 transition-all"
             >
               Thử lại ngay
@@ -271,7 +285,7 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
 
         {Number(totalPages) > 1 && !deferredSearch && (
           <div className="flex justify-center items-center gap-2 mt-12 overflow-x-auto no-scrollbar pb-4">
-            <button onClick={() => fetchMovies(Number(page) - 1)} disabled={Number(page) === 1} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M15 19l-7-7 7-7"/></svg></button>
+            <button onClick={() => fetchMovies(Number(page) - 1, deferredSearch)} disabled={Number(page) === 1} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M15 19l-7-7 7-7"/></svg></button>
             {Array.from({ length: Number(totalPages) }, (_, i) => i + 1)
               .filter(p => {
                 const total = Number(totalPages);
@@ -284,14 +298,14 @@ const HomeScreen: React.FC<HomeProps> = ({ onWatch, isWatching }) => {
               .map(pageNum => (
                 <button 
                   key={pageNum} 
-                  onClick={() => fetchMovies(pageNum)} 
+                  onClick={() => fetchMovies(pageNum, deferredSearch)} 
                   className={`w-10 h-10 rounded-xl text-[10px] font-black transition-all ${Number(page) === pageNum ? 'bg-primary text-black shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}
                 >
                   {pageNum}
                 </button>
               ))
             }
-            <button onClick={() => fetchMovies(Number(page) + 1)} disabled={Number(page) === Number(totalPages)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M9 5l7 7-7 7"/></svg></button>
+            <button onClick={() => fetchMovies(Number(page) + 1, deferredSearch)} disabled={Number(page) === Number(totalPages)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-10 active:scale-90"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-4 h-4 text-white"><path d="M9 5l7 7-7 7"/></svg></button>
           </div>
         )}
       </section>
