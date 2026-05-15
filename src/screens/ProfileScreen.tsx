@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { getFavorites } from '../storage/favorites';
-import { getHistory } from '../storage/watchHistory';
+import { getFavorites, syncFavoritesFromCloud } from '../storage/favorites';
+import { getHistory, syncHistoryFromCloud } from '../storage/watchHistory';
 import { CONFIG } from '../config';
 import { fetchUpdateInfo, getCurrentOtaVersion, hasNewerVersion, installUpdate, reloadForUpdate } from '../ota';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,6 +9,7 @@ import { Capacitor, CapacitorHttp } from '@capacitor/core';
 interface User {
   display_name?: string;
   role?: string;
+  api_token: string;
 }
 
 interface SavedMovie {
@@ -19,14 +20,15 @@ interface SavedMovie {
 }
 
 interface ProfileScreenProps {
-  user: User & { api_token: string };
+  user: User;
   onLogout: () => void;
   onWatch: (slug: string) => void;
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }) => {
-  const [favorites] = useState<SavedMovie[]>(() => getFavorites());
-  const [history] = useState<SavedMovie[]>(() => getHistory());
+  const [favorites, setFavorites] = useState<SavedMovie[]>(() => getFavorites());
+  const [history, setHistory] = useState<SavedMovie[]>(() => getHistory());
+  const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState('favorites');
   const activeItems = activeTab === 'favorites' ? favorites : history;
 
@@ -40,6 +42,39 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
   const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const handleSyncCloud = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const url = `${CONFIG.API_BASE_URL}/sync_api.php?api_token=${encodeURIComponent(user.api_token)}&action=pull`;
+      
+      let data;
+      if (Capacitor.isNativePlatform()) {
+        const response = await CapacitorHttp.get({ url });
+        data = response.data;
+      } else {
+        const response = await fetch(url);
+        data = await response.json();
+      }
+
+      if (data && data.status === 'success' && data.data) {
+        const cloudHistory = data.data.history || [];
+        const cloudFavs = data.data.favorites || [];
+        
+        syncHistoryFromCloud(cloudHistory);
+        syncFavoritesFromCloud(cloudFavs);
+        
+        setHistory(getHistory());
+        setFavorites(getFavorites());
+      } else {
+        console.warn('Sync failed:', data?.message);
+      }
+    } catch (err) {
+      console.error('Sync error:', err);
+    } finally {
+      setSyncing(false);
+    }
+  }, [user.api_token]);
 
   const checkUpdates = useCallback(async (manual = false) => {
     setChecking(true);
@@ -62,9 +97,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void checkUpdates();
+      void handleSyncCloud();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [checkUpdates]);
+  }, [checkUpdates, handleSyncCloud]);
 
   const handleUpdate = async () => {
     if (!hasNewerVersion(latestVersion, currentVersion)) return;
@@ -176,7 +212,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
             <h2 className="truncate text-2xl font-black text-white">{user.display_name || 'VTeen'}</h2>
             <div className="mt-2 flex items-center gap-2">
               <span className="rounded-lg border border-white/10 bg-white/8 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-white/75 backdrop-blur-md">VIP Member</span>
-              <span className="rounded-lg bg-primary/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-primary">{user.role || 'User'}</span>
+              <span className="rounded-lg bg-primary/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-primary">
+                {user.role === 'admin' ? 'ADMIN' : 'VTEEN'}
+              </span>
             </div>
           </div>
         </div>
@@ -238,18 +276,31 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ user, onLogout, onWatch }
         </div>
       </div>
 
-      <div className="mt-4 px-6 flex flex-col gap-3">
+      <div className="mt-4 px-6 grid grid-cols-2 gap-3 relative z-50">
         <button
-          onClick={() => setShowPasswordModal(true)}
-          className="w-full rounded-2xl border border-primary/25 bg-primary/8 py-4 text-xs font-black uppercase tracking-[0.2em] text-primary transition-all active:bg-primary/15"
+          onClick={handleSyncCloud}
+          disabled={syncing}
+          className="rounded-2xl border border-primary/25 bg-primary/8 py-4 text-xs font-black uppercase tracking-[0.1em] text-primary transition-all active:bg-primary/15 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          Đổi mật khẩu
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`}>
+            <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {syncing ? 'Đang sync...' : 'Đồng bộ Cloud'}
         </button>
         <button
           onClick={onLogout}
-          className="w-full rounded-2xl border border-red-500/25 bg-red-500/8 py-4 text-xs font-black uppercase tracking-[0.2em] text-red-400 transition-all active:bg-red-500/15"
+          className="rounded-2xl border border-red-500/25 bg-red-500/8 py-4 text-xs font-black uppercase tracking-[0.1em] text-red-400 transition-all active:bg-red-500/15 active:scale-95"
         >
-          Dang xuat tai khoan
+          Đăng xuất
+        </button>
+      </div>
+
+      <div className="mt-2 px-6">
+        <button
+          onClick={() => setShowPasswordModal(true)}
+          className="w-full rounded-2xl border border-white/10 bg-white/5 py-4 text-xs font-black uppercase tracking-[0.2em] text-white/60 transition-all active:bg-white/10"
+        >
+          Thay đổi mật khẩu bảo mật
         </button>
       </div>
 
