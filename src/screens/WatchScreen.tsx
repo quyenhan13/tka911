@@ -97,73 +97,12 @@ const normalizeMovieDetails = (data: MovieDetailsResponse['data']): MovieDetails
 // Đã chuyển sang watch_api.php
 
 
-const fetchVteenText = async (pathOrUrl: string) => {
-  // Đảm bảo pathOrUrl bắt đầu bằng / nếu là path
-  const cleanPath = pathOrUrl.startsWith('http') ? pathOrUrl : (pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`);
-  const url = cleanPath.startsWith('http') ? cleanPath : `${CONFIG.SITE_BASE_URL}${cleanPath}`;
-  
-  if (import.meta.env.DEV) {
-    const parsed = new URL(url);
-    // Luôn dùng /__vteen làm tiền tố duy nhất, loại bỏ mọi tiền tố folder khác nếu có
-    const devPath = `/__vteen${parsed.pathname}${parsed.search}${parsed.hash}`;
-    
-    try {
-      const response = await fetch(devPath, { credentials: 'include' });
-      if (!response.ok) throw new Error(`Web player HTTP ${response.status}`);
-      return response.text();
-    } catch (err) {
-      console.error('Fetch error:', err);
-      // Fallback gọi thẳng
-      const directUrl = url.replace('http://', 'https://');
-      const response = await fetch(directUrl, { credentials: 'include' });
-      return response.text();
-    }
-  }
-
-  if (Capacitor.isNativePlatform()) {
-    const response = await CapacitorHttp.get({ url, responseType: 'text' });
-    if (response.status < 200 || response.status >= 300) throw new Error(`Web player HTTP ${response.status}`);
-    return typeof response.data === 'string' ? response.data : String(response.data ?? '');
-  }
-
-  const response = await fetch(url, { credentials: 'include' });
-  if (!response.ok) throw new Error(`Web player HTTP ${response.status}`);
-  return response.text();
+const toVteenUrl = (value: string) => {
+  if (value.startsWith('http')) return value;
+  return `${CONFIG.SITE_BASE_URL}/${value.replace(/^\/+/, '')}`;
 };
 
 // Đã chuyển sang watch_api.php
-
-
-const toVteenPath = (value: string) => {
-  if (value.startsWith('http')) {
-    const url = new URL(value);
-    return url.origin === CONFIG.SITE_BASE_URL ? `${url.pathname}${url.search}${url.hash}` : value;
-  }
-
-  return `/${value.replace(/^\/+/, '')}`;
-};
-
-// Đã chuyển sang watch_api.php
-
-
-// Đã chuyển sang watch_api.php
-
-
-const prepareEmbedHtml = (html: string) => {
-  if (!html || !html.trim()) return '<html><body style="background:#000;color:#666;display:flex;align-items:center;justify-content:center">Loading...</body></html>';
-  
-  const extraStyle = `
-    <style>
-      body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000 !important; overflow: hidden; }
-      iframe, video { width: 100% !important; height: 100% !important; border: none !important; background: #000 !important; }
-    </style>
-  `;
-
-  // Thêm base tag tuyệt đối để các link tương đối trong HTML luôn trỏ về server chính
-  const baseTag = `<base href="https://vteen.shop/">`;
-  
-  return `<!DOCTYPE html><html><head>${baseTag}${extraStyle}</head><body style="background:#000">${html}</body></html>`;
-};
 
 
 // Đã chuyển sang watch_api.php
@@ -352,9 +291,7 @@ const WatchScreen: React.FC<WatchScreenProps> = ({ slug, onBack, onUnauthorized 
         }
       } else {
         // Fallback: Dùng iframe embed qua srcDoc
-        const embedPath = toVteenPath(servers[selectedKey]);
-        const embedHtml = await fetchVteenText(embedPath);
-        setWebPlayer({ html: prepareEmbedHtml(embedHtml), src: null, videoSrc: null });
+        setWebPlayer({ html: null, src: toVteenUrl(servers[selectedKey]), videoSrc: null });
       }
 
       const selectedServerNum = Number(selectedKey);
